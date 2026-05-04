@@ -1,0 +1,22 @@
+{
+  "name": "intcu",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Intcu — The Intelligent Cue. AI-powered teleprompter with conversation copilot.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "deploy": "npm run build && wrangler pages deploy dist --project-name intcu"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "terser": "^5.46.2"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.4",
+    "vite": "^6.0.0"
+  }
+}
