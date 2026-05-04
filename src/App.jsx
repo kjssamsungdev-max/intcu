@@ -22,12 +22,12 @@ class ErrorBoundary extends Component {
   componentDidCatch(e, info) { console.error("Intcu error:", e, info); }
   render() {
     if (this.state.error) return (
-      <div style={{ width: "100%", height: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "#0A2540", color: "#f0f4f8", fontFamily: "'Sora', sans-serif", padding: 40, textAlign: "center" }}>
+      <div style={{ width: "100%", height: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: LIGHT.bg, color: LIGHT.text, fontFamily: "'Sora', sans-serif", padding: 40, textAlign: "center" }}>
         <div style={{ fontSize: 48, marginBottom: 16 }}>⚠️</div>
         <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 8 }}>Something went wrong</div>
-        <div style={{ fontSize: 14, color: "#8ba3bb", marginBottom: 24 }}>Intcu encountered an error. Your data is safe.</div>
+        <div style={{ fontSize: 14, color: LIGHT.textDim, marginBottom: 24 }}>Intcu encountered an error. Your data is safe.</div>
         <button onClick={() => { this.setState({ error: null }); window.location.reload(); }}
-          style={{ padding: "10px 24px", borderRadius: 8, background: "#00D4C8", color: "#0A2540", border: "none", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
+          style={{ padding: "10px 24px", borderRadius: 8, background: LIGHT.accent, color: LIGHT.bg, border: "none", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
           Reload Intcu
         </button>
       </div>
@@ -49,18 +49,30 @@ const MAX_POLL_RETRIES = 3;
 const SYNC_INTERVAL_MS = 700;
 const AVG_WPM = 150;
 
-// ─── Theme: Intcu Brand ───
-const T = {
-  bg: "#0A2540", bgAlt: "#0C2D4A", bgCard: "#0F3354",
-  border: "#1a4060", borderLit: "#245580",
-  text: "#f0f4f8", textDim: "#8ba3bb", textMuted: "#4a6a84",
+// ─── Theme: Dual mode (Light = newspaper, Dark = charcoal) ───
+const LIGHT = {
+  bg: "#fafaf9", bgAlt: "#f0efed", bgCard: "#ffffff",
+  border: "#e2e0dc", borderLit: "#d4d0ca",
+  text: "#1a1a1a", textDim: "#6b6b6b", textMuted: "#9ca3af",
+  teal: "#009e95", tealDark: "#00857d", green: "#16a34a",
+  red: "#dc2626", amber: "#d97706", blue: "#2563eb",
+  purple: "#7c3aed", cyan: "#009e95",
+  accent: "#009e95",
+  font: "'Sora', sans-serif", fontSerif: "'Source Serif 4', serif",
+  radius: 8, gap: 8, mode: "light",
+};
+const DARK = {
+  bg: "#09090b", bgAlt: "#131316", bgCard: "#1c1c21",
+  border: "#2a2a30", borderLit: "#3a3a42",
+  text: "#f4f4f5", textDim: "#a1a1aa", textMuted: "#52525b",
   teal: "#00D4C8", tealDark: "#00B8A9", green: "#22c55e",
   red: "#ef4444", amber: "#f59e0b", blue: "#3b82f6",
   purple: "#a855f7", cyan: "#00D4C8",
-  accent: "#00D4C8", // primary brand color
+  accent: "#00D4C8",
   font: "'Sora', sans-serif", fontSerif: "'Source Serif 4', serif",
-  radius: 8, gap: 8,
+  radius: 8, gap: 8, mode: "dark",
 };
+let T = LIGHT;
 // ─── P10-R2: Named constants (no magic numbers) ───
 const DEBOUNCE_MS = 2500;
 const SCROLL_FACTOR = 0.6;
@@ -236,6 +248,8 @@ const Toast = ({ msg, onDone }) => {
 function IntcuApp() {
   // ─── Mode ───
   const [mode, setMode] = useState("script");
+  const [darkMode, setDarkMode] = useState(false);
+  T = darkMode ? DARK : LIGHT;
   const [toast, setToast] = useState("");
   const show = (m) => setToast(m);
 
@@ -407,6 +421,7 @@ function IntcuApp() {
     return cl;
   }, [guidePos]);
 
+  const animateFnRef = useRef(null);
   const animate = useCallback((ts) => {
     if (!lastT.current) lastT.current = ts;
     const dt = ts - lastT.current; lastT.current = ts;
@@ -416,15 +431,17 @@ function IntcuApp() {
     el.scrollTop += (speed * 60 * dt * m) / 1000;
     const mx = el.scrollHeight - el.clientHeight;
     if (mx > 0) setProgress(Math.min((el.scrollTop / mx) * 100, 100));
-    if (el.scrollTop >= mx) { setPlaying(false); return; }
-    animRef.current = requestAnimationFrame(animate);
+    if (mx > 0 && el.scrollTop >= mx) { setPlaying(false); return; }
+    animRef.current = requestAnimationFrame((t) => { if (animateFnRef.current) animateFnRef.current(t); });
   }, [speed, getActive, lineMults]);
+  animateFnRef.current = animate;
 
   useEffect(() => {
-    if (playing && !counting && !voiceRef.current) { lastT.current = null; animRef.current = requestAnimationFrame(animate); }
+    const tick = (ts) => { if (animateFnRef.current) animateFnRef.current(ts); };
+    if (playing && !counting && !voiceRef.current) { lastT.current = null; animRef.current = requestAnimationFrame(tick); }
     else if (animRef.current) cancelAnimationFrame(animRef.current);
     return () => { if (animRef.current) cancelAnimationFrame(animRef.current); };
-  }, [playing, counting, animate]);
+  }, [playing, counting]);
 
   // Countdown
   useEffect(() => { if (!counting || countdown <= 0) { if (counting) setCounting(false); return; } const t = setTimeout(() => setCountdown(c => c - 1), 1000); return () => clearTimeout(t); }, [countdown, counting]);
@@ -931,6 +948,7 @@ function IntcuApp() {
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
           {mode === "script" && <span style={{ fontSize: 9, color: T.textMuted }}>{words}w · {readTime}</span>}
+          <button onClick={() => setDarkMode(!darkMode)} style={{ width: 36, height: 36, borderRadius: 8, background: darkMode ? T.bgCard : T.border, border: "1px solid " + T.borderLit, cursor: "pointer", fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center" }}>{darkMode ? "☀️" : "🌙"}</button>
           <Btn onClick={() => setShowSync(true)} bg={roomOn ? T.purple : T.bgCard} style={{ fontSize: 10, padding: "4px 10px" }}>{roomOn ? `📡 ${members.length}` : "📡"}</Btn>
         </div>
       </div>}
@@ -1047,10 +1065,9 @@ function IntcuApp() {
           <Knob label="Size" value={fontSize} onChange={setFontSize} min={18} max={96} step={2} />
         </div>}
 
-        {/* Expandable settings */}
+        {/* Settings strip */}
         {!fs && <div>
-          <button onClick={() => setCtrlOpen(!ctrlOpen)} style={{ width: "100%", background: T.bg, border: "none", borderBottom: `1px solid ${T.border}`, color: T.textMuted, fontSize: 8, padding: 3, cursor: "pointer", letterSpacing: 2, fontFamily: T.font }}>{ctrlOpen ? "▲ LESS" : "▼ MORE"}</button>
-          {ctrlOpen && <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "5px 10px 8px", gap: 10, borderBottom: `1px solid ${T.border}`, background: T.bgAlt, flexWrap: "wrap", flexShrink: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", padding: "5px 10px 8px", gap: 10, borderBottom: `1px solid ${T.border}`, background: T.bgAlt, flexShrink: 0, overflowX: "auto", overflowY: "hidden", whiteSpace: "nowrap", WebkitOverflowScrolling: "touch", minHeight: 44 }}>
             <Knob label="Margin" value={margin} onChange={setMargin} min={0} max={40} step={5} unit="%" />
             <Knob label="Spacing" value={spacing} onChange={setSpacing} min={1.0} max={3.0} step={0.1} />
             <Knob label="Guide" value={guidePos} onChange={setGuidePos} min={15} max={50} step={5} unit="%" />
@@ -1070,7 +1087,7 @@ function IntcuApp() {
               </select>
             </div>
             <Pill label="Captions" active={captions} onClick={() => setCaptions(!captions)} color={T.teal} />
-          </div>}
+          </div>
         </div>}
 
         {/* Viewport */}
