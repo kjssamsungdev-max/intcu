@@ -2,11 +2,9 @@ name = "intcu"
 compatibility_date = "2024-09-23"
 pages_build_output_dir = "dist"
 
-# KV namespace for room sync (create via: wrangler kv namespace create INTCU_ROOMS)
-# Then add the ID below:
-# [[kv_namespaces]]
-# binding = "INTCU_ROOMS"
-# id = "<your-kv-namespace-id>"
+[[kv_namespaces]]
+binding = "INTCU_ROOMS"
+id = "b032e1b244e0453caf7aab07cd99b1a5"
 
 # Environment variables (set in Cloudflare Dashboard → Pages → intcu → Settings):
 # ANTHROPIC_API_KEY = your Anthropic API key
