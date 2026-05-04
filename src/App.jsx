@@ -22,12 +22,12 @@ class ErrorBoundary extends Component {
   componentDidCatch(e, info) { console.error("Intcu error:", e, info); }
   render() {
     if (this.state.error) return (
-      <div style={{ width: "100%", height: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "#0A2540", color: "#f0f4f8", fontFamily: "'Sora', sans-serif", padding: 40, textAlign: "center" }}>
+      <div style={{ width: "100%", height: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "#09090b", color: "#f4f4f5", fontFamily: "'Sora', sans-serif", padding: 40, textAlign: "center" }}>
         <div style={{ fontSize: 48, marginBottom: 16 }}>⚠️</div>
         <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 8 }}>Something went wrong</div>
-        <div style={{ fontSize: 14, color: "#8ba3bb", marginBottom: 24 }}>Intcu encountered an error. Your data is safe.</div>
+        <div style={{ fontSize: 14, color: "#a1a1aa", marginBottom: 24 }}>Intcu encountered an error. Your data is safe.</div>
         <button onClick={() => { this.setState({ error: null }); window.location.reload(); }}
-          style={{ padding: "10px 24px", borderRadius: 8, background: "#00D4C8", color: "#0A2540", border: "none", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
+          style={{ padding: "10px 24px", borderRadius: 8, background: "#00D4C8", color: "#09090b", border: "none", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
           Reload Intcu
         </button>
       </div>
@@ -51,9 +51,9 @@ const AVG_WPM = 150;
 
 // ─── Theme: Intcu Brand ───
 const T = {
-  bg: "#0A2540", bgAlt: "#0C2D4A", bgCard: "#0F3354",
-  border: "#1a4060", borderLit: "#245580",
-  text: "#f0f4f8", textDim: "#8ba3bb", textMuted: "#4a6a84",
+  bg: "#09090b", bgAlt: "#131316", bgCard: "#1c1c21",
+  border: "#2a2a30", borderLit: "#3a3a42",
+  text: "#f4f4f5", textDim: "#a1a1aa", textMuted: "#52525b",
   teal: "#00D4C8", tealDark: "#00B8A9", green: "#22c55e",
   red: "#ef4444", amber: "#f59e0b", blue: "#3b82f6",
   purple: "#a855f7", cyan: "#00D4C8",
@@ -815,7 +815,7 @@ function IntcuApp() {
     const date = fmtDate(session.date, DATE_LONG);
     let exHtml = "";
     bounded(session.exchanges || [], MAX_EXCHANGES).forEach((ex, i) => {
-      exHtml += `<div style="margin:16px 0;page-break-inside:avoid"><h3 style="color:#2c3e50;font-size:13px;margin:0 0 6px">Exchange ${i + 1}</h3><div style="background:#f0f4f8;border-left:4px solid #3b82f6;padding:10px 14px;margin-bottom:6px;border-radius:0 4px 4px 0"><p style="margin:0 0 2px;font-size:9px;color:#888;text-transform:uppercase;letter-spacing:1px">Heard</p><p style="margin:0;font-size:12px;line-height:1.5;color:#333">${(ex.heard || "").replace(/</g, "&lt;")}</p></div><div style="background:#ecfdf5;border-left:4px solid #22c55e;padding:10px 14px;border-radius:0 4px 4px 0"><p style="margin:0 0 2px;font-size:9px;color:#888;text-transform:uppercase;letter-spacing:1px">Response</p><p style="margin:0;font-size:12px;line-height:1.5;color:#333">${(ex.response || "").replace(/</g, "&lt;")}</p></div></div>`;
+      exHtml += `<div style="margin:16px 0;page-break-inside:avoid"><h3 style="color:#2c3e50;font-size:13px;margin:0 0 6px">Exchange ${i + 1}</h3><div style="background:#f4f4f5;border-left:4px solid #3b82f6;padding:10px 14px;margin-bottom:6px;border-radius:0 4px 4px 0"><p style="margin:0 0 2px;font-size:9px;color:#888;text-transform:uppercase;letter-spacing:1px">Heard</p><p style="margin:0;font-size:12px;line-height:1.5;color:#333">${(ex.heard || "").replace(/</g, "&lt;")}</p></div><div style="background:#ecfdf5;border-left:4px solid #22c55e;padding:10px 14px;border-radius:0 4px 4px 0"><p style="margin:0 0 2px;font-size:9px;color:#888;text-transform:uppercase;letter-spacing:1px">Response</p><p style="margin:0;font-size:12px;line-height:1.5;color:#333">${(ex.response || "").replace(/</g, "&lt;")}</p></div></div>`;
     });
     const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word"><head><meta charset="utf-8"><style>@page{size:8.5in 11in;margin:1in}body{font-family:Georgia,serif;font-size:12px;line-height:1.6;color:#333}h1{font-family:Arial;font-size:20px;color:#00B8A9;border-bottom:2px solid #00B8A9;padding-bottom:6px}h2{font-family:Arial;font-size:14px;color:#333;margin-top:20px}</style></head><body><h1>Intcu — Copilot Session</h1><p style="font-size:11px;color:#888">${date} · ${session.niche} · ${session.style}</p>${session.context ? `<div style="background:#fef9e7;border:1px solid #fcd34d;padding:10px;border-radius:4px;margin:12px 0"><p style="margin:0;font-size:11px;color:#555">${session.context.replace(/</g, "&lt;")}</p></div>` : ""}<h2>Exchanges</h2>${exHtml || "<p style='color:#999'>None</p>"}<h2>Transcript</h2><p style="background:#f5f5f5;padding:12px;border-radius:4px;font-size:11px;color:#666">${(session.fullTranscript || "None").replace(/</g, "&lt;")}</p>${session.intel ? `<h2>Meeting Intelligence</h2><p style="background:#f0f4ff;padding:12px;border-radius:4px;font-size:11px;color:#444;white-space:pre-wrap">${session.intel.replace(/</g, "&lt;")}</p>` : ""}<hr style="border:none;border-top:1px solid #ddd;margin:24px 0"><p style="font-size:9px;color:#ccc;text-align:center">Intcu — The Intelligent Cue · intcu.com</p></body></html>`;
     const blob = new Blob([html], { type: "application/msword" });
