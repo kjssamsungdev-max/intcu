@@ -113,6 +113,21 @@ const LANGUAGES = [
   "Vietnamese", "Indonesian", "Malay", "Dutch", "Turkish", "Polish",
 ];
 
+// ─── Usage Gates & Billing ───
+const PLAN_GATES = {
+  copilot: ["pro", "team", "enterprise"],
+  recording: ["pro", "team", "enterprise"],
+  myfile_brainstorm: ["pro", "team", "enterprise"],
+  unlimited_ai: ["pro", "team", "enterprise"],
+  all_engines: ["pro", "team", "enterprise"],
+  session_export: ["pro", "team", "enterprise"],
+  team_sync: ["team", "enterprise"],
+  translate: ["pro", "team", "enterprise"],
+  quotes: ["pro", "team", "enterprise"],
+};
+const FREE_ENGINES = ["deepseek", "groq", "grok", "gemini"];
+const FREE_DAILY_AI = 3;
+
 const COPILOT_STYLES = [
   { id: "brief", label: "Brief", icon: "⚡" },
   { id: "detailed", label: "Detailed", icon: "📋" },
@@ -307,6 +322,39 @@ function IntcuApp() {
     setLoggedIn(false); setCurrentUser(null); setShowLogin(true);
     localStorage.removeItem("intcu-user");
     setLoginEmail(""); setLoginPassword(""); setRegisterName(""); setLoginError("");
+  };
+
+  // ─── Usage Gates ───
+  const [showUpgrade, setShowUpgrade] = useState(false);
+  const [gatedFeature, setGatedFeature] = useState("");
+
+  const getUserPlan = () => currentUser?.plan || "free";
+
+  const checkGate = (feature) => {
+    if (!PLAN_GATES[feature]) return true;
+    return PLAN_GATES[feature].includes(getUserPlan());
+  };
+
+  const checkDailyLimit = () => {
+    const plan = getUserPlan();
+    if (plan !== "free") return true;
+    const today = new Date().toDateString();
+    const data = JSON.parse(localStorage.getItem("intcu-usage") || "{}");
+    if (data.date !== today) { data.date = today; data.count = 0; }
+    if (data.count >= FREE_DAILY_AI) return false;
+    data.count++;
+    localStorage.setItem("intcu-usage", JSON.stringify(data));
+    return true;
+  };
+
+  const requireGate = (feature) => {
+    if (checkGate(feature)) return true;
+    setGatedFeature(feature); setShowUpgrade(true); return false;
+  };
+
+  const requireAI = () => {
+    if (!checkDailyLimit()) { show("Daily limit reached — upgrade to Pro for unlimited"); return false; }
+    return true;
   };
 
   // ─── Mode ───
@@ -626,6 +674,7 @@ function IntcuApp() {
 
   // ─── Webcam Recording (P10-R5: guarded) ───
   const startCam = async () => {
+    if (!requireGate("recording")) return;
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user", width: 1280, height: 720 }, audio: true });
       setCamOn(true);
@@ -699,6 +748,7 @@ function IntcuApp() {
   // ─── Writer + Script Coach Agent ───
   const generate = async () => {
     if (!wTopic.trim()) return; // P10-R5
+    if (!requireAI()) return;
     setWLoading(true); setWResult(""); setWCoach("");
     const prompt = `Write a ${wFmt.toLowerCase()} script about: "${wTopic}"\nTone: ${wTone}\nTarget: ~${parseInt(wDur) * AVG_WPM} words (${wDur} min)\n${wAud ? `Audience: ${wAud}` : ""}\n${wCtx ? `Context: ${wCtx}` : ""}\n\nRules:\n- ONLY the spoken text. No stage directions, brackets, headers.\n- Natural speech — contractions, rhetorical questions, pauses via line breaks.\n- Hook in first 10 seconds. Memorable close.\n- Match word count to target precisely.`;
     const result = await callAI(null, prompt, 4000, aiEngine);
@@ -709,6 +759,7 @@ function IntcuApp() {
   // Script Coach Agent: analyzes generated script
   const runCoach = async () => {
     if (!wResult) return; // P10-R5
+    if (!requireAI()) return;
     setWCoachLoading(true);
     const analysis = await callAI(
       "You are an expert speech coach. Analyze the script and provide 3-5 specific, actionable improvements. Focus on: opening hook strength, pacing variation, emotional arc, closing impact, and audience engagement. Be direct and specific — cite exact lines. Format as numbered points. Keep under 200 words.",
@@ -721,6 +772,7 @@ function IntcuApp() {
   // ─── Translator (P10-R5: guarded) ───
   const translateScript = async (text) => {
     if (!text || !targetLang) return text;
+    if (!requireGate("translate") || !requireAI()) return text;
     const result = await callAI(
       `You are a professional translator. Translate the following script into ${targetLang}. PRESERVE all markers exactly as-is: [PAUSE], [BREATHE], [SLOW], [EMPHASIS], [/EMPHASIS]. Only translate the spoken text. Return ONLY the translated text with markers intact.`,
       text, 4000, aiEngine
@@ -731,6 +783,7 @@ function IntcuApp() {
   // ─── Quote Finder (P10-R5: guarded) ───
   const searchQuotes = async () => {
     if (!quoteTopic.trim()) return;
+    if (!requireGate("quotes") || !requireAI()) return;
     setQuoteLoading(true); setQuoteResults([]);
     const result = await callAI(
       `You are a quote research assistant. Return EXACTLY 5 verified, real quotes related to the topic. You must only use quotes you are confident are real and correctly attributed. Return as a JSON array with objects: {"quote":"...","author":"...","source":"...","year":"...","context":"..."}. Return ONLY the JSON array, no other text.`,
@@ -842,6 +895,7 @@ function IntcuApp() {
   // AI Brainstorm: expand a single note with ideas
   const brainstormNote = async (note) => {
     if (!note?.text) return;
+    if (!requireGate("myfile_brainstorm") || !requireAI()) return;
     setMfExpanded(note.id);
     setMfBrainLoading(true); setMfBrainstorm("");
     const result = await callAI(
@@ -856,6 +910,7 @@ function IntcuApp() {
   const buildPrompt = async () => {
     const selected = mfNotes.filter(n => mfSelected.has(n.id));
     if (selected.length === 0) { show("Select notes first"); return; }
+    if (!requireGate("myfile_brainstorm") || !requireAI()) return;
     setMfPromptLoading(true); setMfPromptResult("");
     const noteTexts = bounded(selected, 20).map((n, i) => `${i + 1}. ${n.text}`).join("\n");
     const result = await callAI(
@@ -881,6 +936,7 @@ function IntcuApp() {
 
   // ─── Copilot engine ───
   const startCopilot = () => {
+    if (!requireGate("copilot")) return;
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) { show("Speech recognition not supported"); return; }
     setCpActive(true); setCpTranscript([]); setCpSuggestion(""); setCpHistory([]);
@@ -992,6 +1048,7 @@ function IntcuApp() {
 
   // ─── Room sync (P10-R2/R7: bounded, checked) ───
   const createRoom = async () => {
+    if (!requireGate("team_sync")) return;
     const code = genCode(); const name = myName.trim() || "Host";
     const ok1 = await sSet(`room:${code}:state`, { script, speed, scrollPct: 0, playing: false, fontSize, ts: Date.now() }, true);
     const ok2 = await sSet(`room:${code}:members`, [{ name, screen: screenPos, role: "host", ts: Date.now() }], true);
@@ -1289,7 +1346,7 @@ function IntcuApp() {
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
               <span style={{ fontSize: 8, color: T.textMuted, textTransform: "uppercase", letterSpacing: 2 }}>AI Engine</span>
               <select value={aiEngine} onChange={e => setAiEngine(e.target.value)} style={{ background: T.bgCard, color: T.text, border: `1px solid ${T.border}`, borderRadius: 4, padding: "2px 6px", fontSize: 10, fontFamily: T.font }}>
-                {AI_ENGINES.map(e => <option key={e.id} value={e.id}>{e.label} ({e.cost})</option>)}
+                {AI_ENGINES.filter(e => getUserPlan() !== "free" || FREE_ENGINES.includes(e.id)).map(e => <option key={e.id} value={e.id}>{e.label} ({e.cost})</option>)}
               </select>
             </div>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
@@ -1565,6 +1622,45 @@ function IntcuApp() {
             <Btn onClick={sendInj} bg={T.purple} style={{ fontSize: 10 }}>Send</Btn>
           </div>}
         </div>}
+      </div>}
+
+      {/* ─── Upgrade Modal ─── */}
+      {showUpgrade && <div style={{ position: "fixed", inset: 0, zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.9)", backdropFilter: "blur(10px)" }}>
+        <div style={{ width: "94%", maxWidth: 700, maxHeight: "85vh", overflowY: "auto", background: T.bgCard, border: `1px solid ${T.borderLit}`, borderRadius: 12, padding: 24 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+            <div><div style={{ fontSize: 18, fontWeight: 700, fontFamily: T.font }}>Upgrade to unlock</div><div style={{ fontSize: 11, color: T.textDim, marginTop: 2 }}>{gatedFeature ? `"${gatedFeature}" requires a paid plan` : "Unlock all features"}</div></div>
+            <Btn onClick={() => setShowUpgrade(false)} style={{ background: "transparent", border: "none", fontSize: 18 }}>✕</Btn>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
+            {[
+              { plan: "free", name: "Free", price: "$0", features: ["Full teleprompter", "3 AI calls/day", "Free engines only", "10 saved scripts"], current: getUserPlan() === "free" },
+              { plan: "pro", name: "Pro", price: "$12/mo", features: ["Unlimited AI calls", "All 8 engines", "Copilot + Coach", "Recording + Export", "Translate + Quotes", "MyFile brainstorm"], current: getUserPlan() === "pro" },
+              { plan: "team", name: "Team", price: "$29/seat/mo", features: ["Everything in Pro", "Room sync (10 members)", "Team copilot", "Tactical injections", "Priority routing", "Admin dashboard"], current: getUserPlan() === "team" },
+            ].map(tier => (
+              <div key={tier.plan} style={{ border: `1px solid ${tier.current ? T.teal : T.border}`, borderRadius: 10, padding: 16, background: tier.current ? `rgba(0,212,200,0.04)` : T.bg, position: "relative" }}>
+                {tier.current && <div style={{ position: "absolute", top: -8, left: "50%", transform: "translateX(-50%)", background: T.teal, color: "#fff", fontSize: 8, fontWeight: 700, padding: "2px 8px", borderRadius: 10, letterSpacing: 1 }}>CURRENT</div>}
+                <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 2 }}>{tier.name}</div>
+                <div style={{ fontSize: 20, fontWeight: 700, color: T.teal, marginBottom: 10 }}>{tier.price}</div>
+                {tier.features.map((f, i) => <div key={i} style={{ fontSize: 11, color: T.textDim, padding: "3px 0", borderBottom: `1px solid ${T.border}` }}>{f}</div>)}
+                {!tier.current && tier.plan !== "free" && <button onClick={async () => {
+                  try {
+                    const res = await fetch("/api/checkout", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ plan: tier.plan, interval: "month", email: currentUser?.email }) });
+                    const data = await res.json();
+                    if (data.url) { window.location.href = data.url; return; }
+                  } catch {}
+                  // Demo fallback: set plan directly
+                  const updated = { ...currentUser, plan: tier.plan };
+                  setCurrentUser(updated);
+                  localStorage.setItem("intcu-user", JSON.stringify(updated));
+                  const users = getUsers().map(u => u.email === updated.email ? updated : u);
+                  localStorage.setItem("intcu-users", JSON.stringify(users));
+                  setShowUpgrade(false);
+                  show(`Plan upgraded to ${tier.name} (demo mode)`);
+                }} style={{ width: "100%", marginTop: 12, padding: "10px 0", borderRadius: T.radius, background: T.teal, color: "#fff", border: "none", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: T.font }}>Choose {tier.name}</button>}
+              </div>
+            ))}
+          </div>
+        </div>
       </div>}
 
       {/* Global file input (shared by Script and MyFile modes) */}
