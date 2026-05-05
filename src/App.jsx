@@ -22,12 +22,12 @@ class ErrorBoundary extends Component {
   componentDidCatch(e, info) { console.error("Intcu error:", e, info); }
   render() {
     if (this.state.error) return (
-      <div style={{ width: "100%", height: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: LIGHT.bg, color: LIGHT.text, fontFamily: "'Sora', sans-serif", padding: 40, textAlign: "center" }}>
+      <div style={{ width: "100%", height: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "#fafaf9", color: "#1a1a1a", fontFamily: "'Sora', sans-serif", padding: 40, textAlign: "center" }}>
         <div style={{ fontSize: 48, marginBottom: 16 }}>⚠️</div>
         <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 8 }}>Something went wrong</div>
-        <div style={{ fontSize: 14, color: LIGHT.textDim, marginBottom: 24 }}>Intcu encountered an error. Your data is safe.</div>
+        <div style={{ fontSize: 14, color: "#6b6b6b", marginBottom: 24 }}>Intcu encountered an error. Your data is safe.</div>
         <button onClick={() => { this.setState({ error: null }); window.location.reload(); }}
-          style={{ padding: "10px 24px", borderRadius: 8, background: LIGHT.accent, color: LIGHT.bg, border: "none", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
+          style={{ padding: "10px 24px", borderRadius: 8, background: "#00B8A9", color: "#fafaf9", border: "none", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
           Reload Intcu
         </button>
       </div>
@@ -72,17 +72,12 @@ const DEBOUNCE_MS = 2500;
 const SCROLL_FACTOR = 0.6;
 const TOAST_MS = 2500;
 const COUNTDOWN_SECS = 3;
-const FOCUS_INTERVAL_MS = 100;
-const ELAPSED_INTERVAL_MS = 1000;
 const VOICE_MAX_RESTARTS = 3;
 const API_COOLDOWN_MS = 2000;
 const CUE_FONT_SCALE = 0.45;
-const SUGGESTION_FONT_SCALE = 0.65;
 const EDIT_FONT_CAP = 22;
 const EMPTY_LINE_SCALE = 0.4;
 const SPEECH_LANG = "en-US";
-const MAX_SPEECH_RESULTS = 50;
-const MAX_FILE_SIZE = 5 * 1024 * 1024;
 const DATE_SHORT = { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" };
 const DATE_LONG = { weekday: "long", year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" };
 
@@ -376,7 +371,6 @@ function IntcuApp() {
   const [showTour, setShowTour] = useState(false);
   const [showAdmin, setShowAdmin] = useState(false);
   const [showShare, setShowShare] = useState(false);
-  const [shareText, setShareText] = useState("");
   const [adminPage, setAdminPage] = useState("overview");
   const [gatedFeature, setGatedFeature] = useState("");
 
@@ -390,13 +384,15 @@ function IntcuApp() {
   const checkDailyLimit = () => {
     const plan = getUserPlan();
     if (plan !== "free") return true;
-    const today = new Date().toDateString();
-    const data = JSON.parse(localStorage.getItem("intcu-usage") || "{}");
-    if (data.date !== today) { data.date = today; data.count = 0; }
-    if (data.count >= FREE_DAILY_AI) return false;
-    data.count++;
-    localStorage.setItem("intcu-usage", JSON.stringify(data));
-    return true;
+    try {
+      const today = new Date().toDateString();
+      const data = JSON.parse(localStorage.getItem("intcu-usage") || "{}");
+      if (data.date !== today) { data.date = today; data.count = 0; }
+      if (data.count >= FREE_DAILY_AI) return false;
+      data.count++;
+      localStorage.setItem("intcu-usage", JSON.stringify(data));
+      return true;
+    } catch { return true; }
   };
 
   const requireGate = (feature) => {
@@ -492,11 +488,11 @@ function IntcuApp() {
   const [showLib, setShowLib] = useState(false);
   const [scripts, setScripts] = useState([]);
   const [saveName, setSaveName] = useState("");
-  const [ctrlOpen, setCtrlOpen] = useState(false);
   const [dyslexia, setDyslexia] = useState(false); // high-contrast, tinted bg, wider spacing
   const [dyslexiaOverlay, setDyslexiaOverlay] = useState(() => localStorage.getItem("intcu-dys-overlay") || "cream");
   const [apiCooldown, setApiCooldown] = useState(false);
   const voiceRestarts = useRef(0);
+  const voiceRestartTimer = useRef(null);
   // ─── Translator ───
   const [targetLang, setTargetLang] = useState("");
 
@@ -578,6 +574,7 @@ function IntcuApp() {
   const cpRecRef = useRef(null);
   const cpBufRef = useRef("");
   const cpTimerRef = useRef(null);
+  const cpRestartTimer = useRef(null);
   const syncRef = useRef(null);
   const rcRef = useRef("");
   const rrRef = useRef("host");
@@ -741,7 +738,7 @@ function IntcuApp() {
     r.onend = () => {
       if (voiceRef.current && voiceRestarts.current < VOICE_MAX_RESTARTS) {
         voiceRestarts.current++;
-        setTimeout(() => { try { r.start(); } catch (e) { console.warn("Voice restart failed:", e); setVoiceLive(false); } }, 1000);
+        voiceRestartTimer.current = setTimeout(() => { try { r.start(); } catch (e) { console.warn("Voice restart failed:", e); setVoiceLive(false); } }, 1000);
       } else {
         if (voiceRef.current && voiceRestarts.current >= VOICE_MAX_RESTARTS) show("Voice scroll stopped — mic unavailable");
         setVoiceLive(false);
@@ -752,6 +749,7 @@ function IntcuApp() {
   }, [fontSize]);
   const stopVoice = useCallback(() => {
     voiceRef.current = false; voiceRestarts.current = 0;
+    if (voiceRestartTimer.current) { clearTimeout(voiceRestartTimer.current); voiceRestartTimer.current = null; }
     if (recRef.current) { try { recRef.current.abort(); } catch (e) { console.warn("Voice stop error:", e); } recRef.current = null; }
     setVoiceLive(false);
   }, []);
@@ -912,6 +910,7 @@ function IntcuApp() {
       `You are a quote research assistant. Return EXACTLY 5 verified, real quotes related to the topic. You must only use quotes you are confident are real and correctly attributed. Return as a JSON array with objects: {"quote":"...","author":"...","source":"...","year":"...","context":"..."}. Return ONLY the JSON array, no other text.`,
       `Find 5 verified quotes about: "${quoteTopic.trim()}"`, 2000, aiEngine
     );
+    if (!result) { setQuoteResults([]); show("Quote search failed — try again"); setQuoteLoading(false); return; }
     try {
       const clean = result.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
       const parsed = JSON.parse(clean);
@@ -1083,7 +1082,7 @@ function IntcuApp() {
     r.onend = () => {
       if (cpRecRef.current && cpRestarts < VOICE_MAX_RESTARTS) {
         cpRestarts++;
-        setTimeout(() => { try { r.start(); } catch (e) { console.warn("Copilot restart failed:", e); } }, 1000);
+        cpRestartTimer.current = setTimeout(() => { try { r.start(); } catch (e) { console.warn("Copilot restart failed:", e); } }, 1000);
       } else if (cpRecRef.current) { show("Mic disconnected — tap Stop then restart"); }
     };
     cpRecRef.current = r;
@@ -1104,6 +1103,7 @@ function IntcuApp() {
     setCpActive(false);
     if (cpRecRef.current) { try { cpRecRef.current.abort(); } catch (e) { console.warn("Copilot stop error:", e); } cpRecRef.current = null; }
     if (cpTimerRef.current) clearTimeout(cpTimerRef.current);
+    if (cpRestartTimer.current) { clearTimeout(cpRestartTimer.current); cpRestartTimer.current = null; }
   };
 
   const genCpResponse = async (transcript) => {
