@@ -49,30 +49,22 @@ const MAX_POLL_RETRIES = 3;
 const SYNC_INTERVAL_MS = 700;
 const AVG_WPM = 150;
 
-// ─── Theme: Dual mode (Light = newspaper, Dark = charcoal) ───
-const LIGHT = {
-  bg: "#fafaf9", bgAlt: "#f0efed", bgCard: "#ffffff",
-  border: "#e2e0dc", borderLit: "#d4d0ca",
+// ─── Theme: Hybrid UX zones (dark chrome, light content) ───
+const T = {
+  // Chrome zones (header, tabs, controls)
+  chrome: "#0e0f11", chromeMid: "#16171b", chromeLight: "#1e1f25",
+  chromeBorder: "#2a2b32", chromeText: "#e4e4e7", chromeTextDim: "#71717a",
+  // Content zone (viewport, modals)
+  bg: "#fafaf9", bgAlt: "#f5f4f2", bgCard: "#ffffff",
+  border: "#e4e2de", borderLit: "#d4d0ca",
   text: "#1a1a1a", textDim: "#6b6b6b", textMuted: "#9ca3af",
-  teal: "#009e95", tealDark: "#00857d", green: "#16a34a",
+  // Brand colors
+  teal: "#00B8A9", tealDark: "#009e95", green: "#16a34a",
   red: "#dc2626", amber: "#d97706", blue: "#2563eb",
-  purple: "#7c3aed", cyan: "#009e95",
-  accent: "#009e95",
+  purple: "#7c3aed", cyan: "#00B8A9", accent: "#00B8A9",
   font: "'Sora', sans-serif", fontSerif: "'Source Serif 4', serif",
-  radius: 8, gap: 8, mode: "light",
+  radius: 8, gap: 8,
 };
-const DARK = {
-  bg: "#09090b", bgAlt: "#131316", bgCard: "#1c1c21",
-  border: "#2a2a30", borderLit: "#3a3a42",
-  text: "#f4f4f5", textDim: "#a1a1aa", textMuted: "#52525b",
-  teal: "#00D4C8", tealDark: "#00B8A9", green: "#22c55e",
-  red: "#ef4444", amber: "#f59e0b", blue: "#3b82f6",
-  purple: "#a855f7", cyan: "#00D4C8",
-  accent: "#00D4C8",
-  font: "'Sora', sans-serif", fontSerif: "'Source Serif 4', serif",
-  radius: 8, gap: 8, mode: "dark",
-};
-let T = LIGHT;
 // ─── P10-R2: Named constants (no magic numbers) ───
 const DEBOUNCE_MS = 2500;
 const SCROLL_FACTOR = 0.6;
@@ -243,7 +235,7 @@ async function callAI(system, userMsg, maxTokens = 1000, engine = "claude") {
 
 // ─── Shared UI atoms (P10-R4: each ≤ 15 lines) ───
 const Btn = ({ children, onClick, bg, disabled, style: s, label, title }) => (
-  <button disabled={disabled} onClick={onClick} title={title} aria-label={label || (typeof children === "string" ? children : undefined)} style={{ padding: "7px 14px", borderRadius: T.radius, background: bg || T.bgCard, color: T.text, border: `1px solid ${T.border}`, cursor: disabled ? "default" : "pointer", fontSize: 12, fontFamily: T.font, fontWeight: 600, whiteSpace: "nowrap", opacity: disabled ? 0.4 : 1, transition: "all 0.15s", ...s }}>{children}</button>
+  <button disabled={disabled} onClick={onClick} title={title} aria-label={label || (typeof children === "string" ? children : undefined)} style={{ padding: "7px 14px", borderRadius: T.radius, background: bg || T.chromeLight, color: T.chromeText, border: `1px solid ${T.chromeBorder}`, cursor: disabled ? "default" : "pointer", fontSize: 12, fontFamily: T.font, fontWeight: 600, whiteSpace: "nowrap", opacity: disabled ? 0.4 : 1, transition: "all 0.15s", ...s }}>{children}</button>
 );
 
 const Knob = ({ label, value, onChange, min, max, step = 1, unit = "" }) => (
@@ -258,13 +250,13 @@ const Knob = ({ label, value, onChange, min, max, step = 1, unit = "" }) => (
 );
 
 const Pill = ({ label, active, onClick, color = T.red, title }) => (
-  <button onClick={onClick} title={title} style={{ padding: "4px 12px", borderRadius: 20, background: active ? color : "transparent", border: `1px solid ${active ? color : T.border}`, color: active ? "#fff" : T.textDim, fontSize: 10, fontWeight: 600, cursor: "pointer", fontFamily: T.font, letterSpacing: 0.5, transition: "all 0.15s" }}>{label}</button>
+  <button onClick={onClick} title={title} style={{ padding: "4px 12px", borderRadius: 20, background: active ? color : "transparent", border: `1px solid ${active ? color : T.chromeBorder}`, color: active ? "#fff" : T.chromeTextDim, fontSize: 10, fontWeight: 600, cursor: "pointer", fontFamily: T.font, letterSpacing: 0.5, transition: "all 0.15s" }}>{label}</button>
 );
 
 const Toast = ({ msg, onDone }) => {
   useEffect(() => { if (!msg) return; const t = setTimeout(onDone, TOAST_MS); return () => clearTimeout(t); }, [msg, onDone]);
   if (!msg) return null;
-  return <div role="alert" aria-live="polite" style={{ position: "fixed", bottom: 60, left: "50%", transform: "translateX(-50%)", background: T.bgCard, border: `1px solid ${T.borderLit}`, borderRadius: 8, padding: "8px 20px", fontSize: 12, color: T.text, fontFamily: T.font, zIndex: 99, animation: "fadeUp 0.3s ease", boxShadow: "0 8px 32px rgba(0,0,0,0.6)" }}>{msg}</div>;
+  return <div role="alert" aria-live="polite" style={{ position: "fixed", bottom: 60, left: "50%", transform: "translateX(-50%)", background: T.chrome, border: `1px solid ${T.chromeBorder}`, borderRadius: 8, padding: "8px 20px", fontSize: 12, color: T.chromeText, fontFamily: T.font, zIndex: 99, animation: "fadeUp 0.3s ease", boxShadow: "0 8px 32px rgba(0,0,0,0.6)" }}>{msg}</div>;
 };
 
 // ═══════════════════════════════════════════════
@@ -396,8 +388,7 @@ function IntcuApp() {
 
   // ─── Mode ───
   const [mode, setMode] = useState("script");
-  const [darkMode, setDarkMode] = useState(false);
-  T = darkMode ? DARK : LIGHT;
+  // Theme is a fixed hybrid — no toggle needed
   const [toast, setToast] = useState("");
   const show = (m) => setToast(m);
 
@@ -1205,7 +1196,7 @@ function IntcuApp() {
 
   // ─── Login Page ───
   if (!loggedIn || showLogin) return (
-    <div style={{ width: "100%", height: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: T.bg, fontFamily: T.font }}>
+    <div style={{ width: "100%", height: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: T.chrome, fontFamily: T.font }}>
       <div style={{ width: "88%", maxWidth: 400 }}>
         <div style={{ textAlign: "center", marginBottom: 28 }}>
           <div style={{ fontSize: 28, fontWeight: 700, letterSpacing: 3, marginBottom: 4 }}>INT<span style={{ color: T.teal }}>CU</span></div>
@@ -1216,9 +1207,9 @@ function IntcuApp() {
             <button onClick={() => { setIsRegistering(false); setLoginError(""); }} style={{ flex: 1, padding: "10px 0", background: "transparent", border: "none", borderBottom: !isRegistering ? `2px solid ${T.teal}` : "2px solid transparent", color: !isRegistering ? T.text : T.textDim, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: T.font }}>Sign In</button>
             <button onClick={() => { setIsRegistering(true); setLoginError(""); }} style={{ flex: 1, padding: "10px 0", background: "transparent", border: "none", borderBottom: isRegistering ? `2px solid ${T.teal}` : "2px solid transparent", color: isRegistering ? T.text : T.textDim, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: T.font }}>Register</button>
           </div>
-          {isRegistering && <input value={registerName} onChange={e => setRegisterName(e.target.value)} placeholder="Full name" style={{ width: "100%", height: 48, background: T.bgCard, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: "0 14px", color: T.text, fontSize: 14, fontFamily: T.font, marginBottom: 10, boxSizing: "border-box", outline: "none" }} />}
-          <input value={loginEmail} onChange={e => setLoginEmail(e.target.value)} placeholder="Email or username" onKeyDown={e => { if (e.key === "Enter" && !isRegistering) handleLogin(); }} style={{ width: "100%", height: 48, background: T.bgCard, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: "0 14px", color: T.text, fontSize: 14, fontFamily: T.font, marginBottom: 10, boxSizing: "border-box", outline: "none" }} />
-          <input value={loginPassword} onChange={e => setLoginPassword(e.target.value)} placeholder="Password" type="password" onKeyDown={e => { if (e.key === "Enter") isRegistering ? handleRegister() : handleLogin(); }} style={{ width: "100%", height: 48, background: T.bgCard, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: "0 14px", color: T.text, fontSize: 14, fontFamily: T.font, marginBottom: 16, boxSizing: "border-box", outline: "none" }} />
+          {isRegistering && <input value={registerName} onChange={e => setRegisterName(e.target.value)} placeholder="Full name" style={{ width: "100%", height: 48, background: T.bgAlt, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: "0 14px", color: T.text, fontSize: 14, fontFamily: T.font, marginBottom: 10, boxSizing: "border-box", outline: "none" }} />}
+          <input value={loginEmail} onChange={e => setLoginEmail(e.target.value)} placeholder="Email or username" onKeyDown={e => { if (e.key === "Enter" && !isRegistering) handleLogin(); }} style={{ width: "100%", height: 48, background: T.bgAlt, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: "0 14px", color: T.text, fontSize: 14, fontFamily: T.font, marginBottom: 10, boxSizing: "border-box", outline: "none" }} />
+          <input value={loginPassword} onChange={e => setLoginPassword(e.target.value)} placeholder="Password" type="password" onKeyDown={e => { if (e.key === "Enter") isRegistering ? handleRegister() : handleLogin(); }} style={{ width: "100%", height: 48, background: T.bgAlt, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: "0 14px", color: T.text, fontSize: 14, fontFamily: T.font, marginBottom: 16, boxSizing: "border-box", outline: "none" }} />
           <button onClick={isRegistering ? handleRegister : handleLogin} style={{ width: "100%", height: 48, background: T.teal, color: "#fff", border: "none", borderRadius: T.radius, fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: T.font, letterSpacing: 0.5 }}>{isRegistering ? "Create Account" : "Sign In"}</button>
           {loginError && <div style={{ marginTop: 10, fontSize: 12, color: T.red, textAlign: "center" }}>{loginError}</div>}
         </div>
@@ -1231,11 +1222,11 @@ function IntcuApp() {
     <div style={{ width: "100%", height: "100vh", display: "flex", flexDirection: "column", background: T.bg, color: T.text, overflow: "hidden", position: "relative", fontFamily: T.font, ...orientStyle }}>
 
       {/* ─── Top bar ─── */}
-      {!fs && <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 12px", background: T.bgAlt, borderBottom: `1px solid ${T.border}`, flexShrink: 0, minHeight: 42 }}>
+      {!fs && <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 12px", background: T.chrome, borderBottom: `1px solid ${T.chromeBorder}`, flexShrink: 0, minHeight: 42 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <div style={{ width: 8, height: 8, borderRadius: "50%", background: (playing && !counting) || cpActive ? (voiceLive || cpActive ? T.teal : T.teal) : T.textMuted, boxShadow: (playing && !counting) || cpActive ? `0 0 10px ${T.teal}` : "none", transition: "all 0.3s" }} />
           <svg viewBox="0 0 200 60" style={{ width: 80, height: 24, verticalAlign: "middle" }}>
-            <text x="10" y="43" fontFamily="'Sora', sans-serif" fontSize="38" fontWeight="700" letterSpacing="2" fill={T.text}>int</text>
+            <text x="10" y="43" fontFamily="'Sora', sans-serif" fontSize="38" fontWeight="700" letterSpacing="2" fill={T.chromeText}>int</text>
             <text x="102" y="43" fontFamily="'Sora', sans-serif" fontSize="38" fontWeight="700" letterSpacing="2" fill={T.teal}>cu</text>
             <circle cx="155" cy="28" r="4" fill={T.teal} opacity="0.9"/>
             <circle cx="155" cy="28" r="7" fill={T.teal} opacity="0.15"/>
@@ -1245,21 +1236,20 @@ function IntcuApp() {
           {roomOn && <span style={{ fontSize: 8, color: T.purple, fontWeight: 700 }}>ROOM {roomCode}</span>}
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          {mode === "script" && <span style={{ fontSize: 9, color: T.textMuted }}>{words}w · {readTime}</span>}
-          {currentUser && <span style={{ fontSize: 9, color: T.textDim, maxWidth: 80, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{currentUser.name || currentUser.email}</span>}
+          {mode === "script" && <span style={{ fontSize: 9, color: T.chromeTextDim }}>{words}w · {readTime}</span>}
+          {currentUser && <span style={{ fontSize: 9, color: T.chromeTextDim, maxWidth: 80, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{currentUser.name || currentUser.email}</span>}
           {currentUser?.role === "admin" && <span style={{ fontSize: 7, color: T.teal, fontWeight: 700, letterSpacing: 1, background: `rgba(0,212,200,0.1)`, padding: "1px 4px", borderRadius: 3 }}>ADMIN</span>}
           <Btn onClick={logout} style={{ fontSize: 9, padding: "3px 8px" }} title="Sign out">↪</Btn>
           <Btn onClick={() => setShowShortcuts(true)} style={{ fontSize: 11, padding: "3px 8px", fontWeight: 700 }} title="Keyboard shortcuts (?)">?</Btn>
-          <button onClick={() => setDarkMode(!darkMode)} title="Switch light / dark mode" style={{ width: 36, height: 36, borderRadius: 8, background: darkMode ? T.bgCard : T.border, border: "1px solid " + T.borderLit, cursor: "pointer", fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center" }}>{darkMode ? "☀️" : "🌙"}</button>
           <Btn onClick={() => setShowSync(true)} bg={roomOn ? T.purple : T.bgCard} style={{ fontSize: 10, padding: "4px 10px" }} title="Multi-screen sync & team rooms">{roomOn ? `📡 ${members.length}` : "📡"}</Btn>
         </div>
       </div>}
 
       {/* ─── Mode tabs ─── */}
-      {!fs && <nav role="navigation" aria-label="Mode tabs" style={{ display: "flex", borderBottom: `1px solid ${T.border}`, background: T.bg, flexShrink: 0 }}>
+      {!fs && <nav role="navigation" aria-label="Mode tabs" style={{ display: "flex", borderBottom: `1px solid ${T.chromeBorder}`, background: T.chrome, flexShrink: 0 }}>
         {[["script", "📝 Script"], ["writer", "✨ Writer"], ["myfile", "📋 MyFile"], ["copilot", "🎙️ Copilot"]].map(([id, label]) => (
           <button key={id} role="tab" aria-selected={mode === id} aria-label={`${label} mode`} onClick={() => { if (playing) { setPlaying(false); stopVoice(); } if (cpActive) stopCopilot(); setMode(id); setShowWelcome(false); }}
-            style={{ flex: 1, padding: "8px 0", background: mode === id ? T.bgAlt : "transparent", border: "none", borderBottom: mode === id ? `2px solid ${T.teal}` : "2px solid transparent", color: mode === id ? T.text : T.textDim, fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: T.font, transition: "all 0.15s" }}>{label}</button>
+            style={{ flex: 1, padding: "8px 0", background: "transparent", border: "none", borderBottom: mode === id ? `2px solid ${T.teal}` : "2px solid transparent", color: mode === id ? T.chromeText : T.chromeTextDim, fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: T.font, transition: "all 0.15s" }}>{label}</button>
         ))}
       </nav>}
 
@@ -1382,7 +1372,7 @@ function IntcuApp() {
         </div>}
 
         {/* Controls */}
-        {!fs && <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "5px 10px", gap: 5, borderBottom: `1px solid ${T.border}`, background: T.bgAlt, flexShrink: 0, flexWrap: "wrap" }}>
+        {!fs && <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "5px 10px", gap: 5, borderBottom: `1px solid ${T.chromeBorder}`, background: T.chromeMid, flexShrink: 0, flexWrap: "wrap" }}>
           <Btn onClick={doPlay} bg={playing ? T.red : T.green} style={{ minWidth: 64 }} title="Play / Pause (Space)">{playing ? "⏸ Pause" : "▶ Play"}</Btn>
           <Btn onClick={doReset} title="Reset to start (R)">⟲</Btn>
           <Btn onClick={doEdit} title="Edit script (E)">✎</Btn>
@@ -1400,7 +1390,7 @@ function IntcuApp() {
 
         {/* Settings strip */}
         {!fs && <div>
-          <div style={{ display: "flex", alignItems: "center", padding: "5px 10px 8px", gap: 10, borderBottom: `1px solid ${T.border}`, background: T.bgAlt, flexShrink: 0, overflowX: "auto", overflowY: "hidden", whiteSpace: "nowrap", WebkitOverflowScrolling: "touch", minHeight: 44 }}>
+          <div style={{ display: "flex", alignItems: "center", padding: "5px 10px 8px", gap: 10, borderBottom: `1px solid ${T.chromeBorder}`, background: T.chromeLight, flexShrink: 0, overflowX: "auto", overflowY: "hidden", whiteSpace: "nowrap", WebkitOverflowScrolling: "touch", minHeight: 44 }}>
             <Knob label="Margin" value={margin} onChange={setMargin} min={0} max={40} step={5} unit="%" />
             <Knob label="Spacing" value={spacing} onChange={setSpacing} min={1.0} max={3.0} step={0.1} />
             <Knob label="Guide" value={guidePos} onChange={setGuidePos} min={15} max={50} step={5} unit="%" />
@@ -1413,21 +1403,21 @@ function IntcuApp() {
             </div>}
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
               <span style={{ fontSize: 8, color: T.textMuted, textTransform: "uppercase", letterSpacing: 2 }}>Font</span>
-              <select value={fontIdx} onChange={e => setFontIdx(+e.target.value)} style={{ background: T.bgCard, color: T.text, border: `1px solid ${T.border}`, borderRadius: 4, padding: "2px 6px", fontSize: 10, fontFamily: T.font }}>{PROMPTER_FONTS.map((f, i) => <option key={i} value={i}>{f.name}</option>)}</select>
+              <select value={fontIdx} onChange={e => setFontIdx(+e.target.value)} style={{ background: T.chromeLight, color: T.chromeText, border: `1px solid ${T.chromeBorder}`, borderRadius: 4, padding: "2px 6px", fontSize: 10, fontFamily: T.font }}>{PROMPTER_FONTS.map((f, i) => <option key={i} value={i}>{f.name}</option>)}</select>
             </div>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
               <span style={{ fontSize: 8, color: T.textMuted, textTransform: "uppercase", letterSpacing: 2 }}>Layout</span>
-              <select value={orientation} onChange={e => setOrientation(e.target.value)} style={{ background: T.bgCard, color: T.text, border: `1px solid ${T.border}`, borderRadius: 4, padding: "2px 6px", fontSize: 10, fontFamily: T.font }}>{["auto", "portrait", "landscape"].map(o => <option key={o} value={o}>{o}</option>)}</select>
+              <select value={orientation} onChange={e => setOrientation(e.target.value)} style={{ background: T.chromeLight, color: T.chromeText, border: `1px solid ${T.chromeBorder}`, borderRadius: 4, padding: "2px 6px", fontSize: 10, fontFamily: T.font }}>{["auto", "portrait", "landscape"].map(o => <option key={o} value={o}>{o}</option>)}</select>
             </div>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
               <span style={{ fontSize: 8, color: T.textMuted, textTransform: "uppercase", letterSpacing: 2 }}>AI Engine</span>
-              <select value={aiEngine} onChange={e => setAiEngine(e.target.value)} style={{ background: T.bgCard, color: T.text, border: `1px solid ${T.border}`, borderRadius: 4, padding: "2px 6px", fontSize: 10, fontFamily: T.font }}>
+              <select value={aiEngine} onChange={e => setAiEngine(e.target.value)} style={{ background: T.chromeLight, color: T.chromeText, border: `1px solid ${T.chromeBorder}`, borderRadius: 4, padding: "2px 6px", fontSize: 10, fontFamily: T.font }}>
                 {AI_ENGINES.filter(e => getUserPlan() !== "free" || FREE_ENGINES.includes(e.id)).map(e => <option key={e.id} value={e.id}>{e.label} ({e.cost})</option>)}
               </select>
             </div>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
               <span style={{ fontSize: 8, color: T.textMuted, textTransform: "uppercase", letterSpacing: 2 }}>Translate</span>
-              <select value={targetLang} onChange={e => setTargetLang(e.target.value)} title="Translate script or copilot responses" style={{ background: T.bgCard, color: T.text, border: `1px solid ${T.border}`, borderRadius: 4, padding: "2px 6px", fontSize: 10, fontFamily: T.font }}>
+              <select value={targetLang} onChange={e => setTargetLang(e.target.value)} title="Translate script or copilot responses" style={{ background: T.chromeLight, color: T.chromeText, border: `1px solid ${T.chromeBorder}`, borderRadius: 4, padding: "2px 6px", fontSize: 10, fontFamily: T.font }}>
                 <option value="">Off</option>
                 {LANGUAGES.map(l => <option key={l} value={l}>{l}</option>)}
               </select>
@@ -1449,7 +1439,7 @@ function IntcuApp() {
           {!editing && <>
             <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 80, background: `linear-gradient(180deg, ${T.bg} 0%, transparent 100%)`, zIndex: 10, pointerEvents: "none" }} />
             <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 80, background: `linear-gradient(0deg, ${T.bg} 0%, transparent 100%)`, zIndex: 10, pointerEvents: "none" }} />
-            <div style={{ position: "absolute", left: 0, right: 0, top: `${guidePos}%`, height: 2, background: focus ? `rgba(0,212,200,0.3)` : `rgba(0,212,200,0.1)`, zIndex: 10, pointerEvents: "none" }}>
+            <div style={{ position: "absolute", left: 0, right: 0, top: `${guidePos}%`, height: 2, background: focus ? `rgba(0,212,200,0.25)` : `rgba(0,212,200,0.15)`, zIndex: 10, pointerEvents: "none" }}>
               <div style={{ position: "absolute", left: 0, top: -3, width: 6, height: 8, background: T.teal, borderRadius: "0 2px 2px 0" }} />
               <div style={{ position: "absolute", right: 0, top: -3, width: 6, height: 8, background: T.teal, borderRadius: "2px 0 0 2px" }} />
             </div>
@@ -1503,7 +1493,7 @@ function IntcuApp() {
             {lines.map((line, i) => {
               const dist = Math.abs(i - activeLine);
               let op = 1;
-              if (focus) { if (i === activeLine) op = 1; else if (dist === 1) op = 0.5; else if (dist === 2) op = 0.25; else op = 0.12; }
+              if (focus) { if (i === activeLine) op = 1; else if (dist === 1) op = 0.4; else if (dist === 2) op = 0.2; else op = 0.08; }
               const isActive = i === activeLine && focus && playing && !counting;
               const lineContent = (() => {
                 if (!isActive) return renderCue(line, cues);
@@ -1704,12 +1694,12 @@ function IntcuApp() {
             <div style={{ fontSize: 10, color: T.text, lineHeight: 1.5, whiteSpace: "pre-wrap" }}>{cpIntel}</div>
           </div>}
           {/* Transcript */}
-          <div style={{ borderTop: `1px solid ${T.border}`, background: T.bg, maxHeight: 64, overflowY: "auto", padding: "6px 14px", flexShrink: 0 }}>
+          <div style={{ borderTop: `1px solid ${T.border}`, background: T.bgAlt, maxHeight: 64, overflowY: "auto", padding: "6px 14px", flexShrink: 0 }}>
             {cpTranscript.length === 0 && <div style={{ fontSize: 10, color: T.textMuted, fontStyle: "italic" }}>Transcript appears here...</div>}
             {bounded(cpTranscript, 10).slice(-10).map((t, i) => <span key={i} style={{ fontSize: 10, color: t.type === "interim" ? T.textMuted : T.textDim, marginRight: 3 }}>{t.text} </span>)}
           </div>
           {/* Controls */}
-          <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 12px", borderTop: `1px solid ${T.border}`, background: T.bgAlt, flexShrink: 0, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 12px", borderTop: `1px solid ${T.chromeBorder}`, background: T.chromeMid, flexShrink: 0, flexWrap: "wrap" }}>
             <Btn onClick={cpRespondNow} bg={T.blue} title="Generate response immediately">⚡ Now</Btn>
             <Btn onClick={runIntel} bg={T.cyan} style={{ fontSize: 10 }} title="Analyse meeting themes & leverage">🧠 Intel</Btn>
             <select value={cpStyle} onChange={e => setCpStyle(e.target.value)} style={{ ...iStyle, padding: "3px 6px", fontSize: 10, flex: "0 0 auto" }}>{COPILOT_STYLES.map(s => <option key={s.id} value={s.id}>{s.icon} {s.label}</option>)}</select>
@@ -1853,7 +1843,7 @@ function IntcuApp() {
   );
 }
 
-const iStyle = { background: T.bgCard, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: "8px 12px", color: T.text, fontSize: 13, fontFamily: T.font, outline: "none", boxSizing: "border-box" };
+const iStyle = { background: T.bgAlt, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: "8px 12px", color: T.text, fontSize: 13, fontFamily: T.font, outline: "none", boxSizing: "border-box" };
 
 // ─── P10-R7: Wrapped export with Error Boundary ───
 export default function App() { return <ErrorBoundary><IntcuApp /></ErrorBoundary>; }
