@@ -14,10 +14,29 @@
 
 const ROOM_TTL = 7200; // 2 hours
 const MAX_BODY = 100000; // 100KB
+const RATE_WINDOW = 60000; // 1 minute
+const RATE_MAX = 10; // 10 lookups per minute per IP
+
+const rateLimits = new Map();
+
+function checkRate(ip) {
+  if (!ip) return true;
+  const now = Date.now();
+  const entry = rateLimits.get(ip);
+  if (!entry || now - entry.start > RATE_WINDOW) {
+    rateLimits.set(ip, { start: now, count: 1 });
+    return true;
+  }
+  entry.count++;
+  return entry.count <= RATE_MAX;
+}
 
 export async function onRequestGet(context) {
   const { request, env } = context;
   if (!env.INTCU_ROOMS) return json({ error: "KV not configured" }, 500);
+
+  const ip = request.headers.get("cf-connecting-ip") || request.headers.get("x-forwarded-for") || "unknown";
+  if (!checkRate(ip)) return json({ error: "Rate limited" }, 429);
 
   const url = new URL(request.url);
   const code = (url.searchParams.get("code") || "").toUpperCase();

@@ -154,6 +154,9 @@ const estTime = (t) => { const m = Math.ceil(wc(t) / AVG_WPM); return m < 1 ? "<
 const fmtTime = (s) => { if (s < 0) s = 0; return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; };
 const genCode = () => { const c = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; let r = ""; for (let i = 0; i < 6; i++) r += c[Math.floor(Math.random() * c.length)]; return r; };
 const bounded = (arr, max) => (arr || []).slice(0, max);
+const sanitize = (text) => { if (!text) return ""; return String(text).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); };
+const MAX_STORAGE_MB = 4;
+const checkStorage = () => { try { let total = 0; for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); total += (localStorage.getItem(k) || "").length; } return total < MAX_STORAGE_MB * 1024 * 1024; } catch { return false; } };
 const syllabify = (word) => {
   if (!word || word.length < 4) return word;
   return word.replace(/([aeiouyAEIOUY]+)([^aeiouyAEIOUY])/g, "$1·$2");
@@ -202,22 +205,24 @@ const sSet = async (k, v, shared = false) => {
     // Fallback to localStorage
     try { localStorage.setItem(`shared:${k}`, JSON.stringify(v)); return true; } catch { return false; }
   }
+  if (!checkStorage()) return false;
   try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch { return false; }
 };
 
 // P10-R5: Guarded cue renderer
 function renderCue(text, enabled) {
   if (!text && text !== "") return "\u00A0";
-  if (!enabled) return text || "\u00A0";
-  const up = (text || "").trim().toUpperCase();
+  const safe = sanitize(text);
+  if (!enabled) return safe || "\u00A0";
+  const up = (safe || "").trim().toUpperCase();
   if (CUE_MAP[up]) return <span style={{ color: CUE_MAP[up].color, fontSize: `${CUE_FONT_SCALE}em`, fontWeight: 700, letterSpacing: 3, fontFamily: T.font, display: "block", padding: "4px 0" }}>{CUE_MAP[up].label}</span>;
-  if (text.includes("[EMPHASIS]")) {
-    const parts = bounded(text.split(/\[EMPHASIS\]|\[\/EMPHASIS\]/i), 20);
+  if (safe.includes("[EMPHASIS]")) {
+    const parts = bounded(safe.split(/\[EMPHASIS\]|\[\/EMPHASIS\]/i), 20);
     return parts.map((p, i) => i % 2 === 1
       ? <span key={i} style={{ color: T.amber, fontWeight: 700, borderBottom: `2px solid ${T.amber}`, paddingBottom: 2 }}>{p}</span>
       : <span key={i}>{p}</span>);
   }
-  return text || "\u00A0";
+  return safe || "\u00A0";
 }
 
 // ─── P10-R7: AI API call wrapper (uses /api/ai proxy in production) ───
@@ -226,6 +231,7 @@ const API_DIRECT = "https://api.anthropic.com/v1/messages"; // fallback for arti
 
 async function callAI(system, userMsg, maxTokens = 1000, engine = "claude") {
   if (!userMsg) return null; // P10-R5
+  userMsg = "USER INPUT START\n" + userMsg + "\nUSER INPUT END";
   const MODELS = {
     claude: "claude-sonnet-4-20250514", deepseek: "deepseek-chat", grok: "grok-4-fast",
     gemini: "gemini-2.5-flash", openai: "gpt-5-mini", minimax: "minimax-m2.7",
@@ -276,6 +282,11 @@ function IntcuApp() {
   const [isRegistering, setIsRegistering] = useState(false);
   const [registerName, setRegisterName] = useState("");
 
+  // ─── Auth signing ───
+  const getAuthKey = () => { let k = localStorage.getItem("intcu-auth-key"); if (!k) { k = "intcu-v1-" + Date.now(); localStorage.setItem("intcu-auth-key", k); } return k; };
+  const signUser = (u) => ({ ...u, sig: btoa(u.email + (u.role || "user") + (u.plan || "free") + getAuthKey()) });
+  const verifyUser = (u) => { if (!u?.sig || !u?.email) return false; return u.sig === btoa(u.email + (u.role || "user") + (u.plan || "free") + getAuthKey()); };
+
   // ─── Auth persistence ───
   useEffect(() => {
     // Seed default admin
@@ -284,10 +295,10 @@ function IntcuApp() {
       const defaultAdmin = [{ email: "admin", password: btoa("123456"), name: "Administrator", role: "admin", created: new Date().toISOString() }];
       localStorage.setItem("intcu-users", JSON.stringify(defaultAdmin));
     }
-    // Check session
+    // Check session with signature verification
     const session = localStorage.getItem("intcu-user");
     if (session) {
-      try { const u = JSON.parse(session); setCurrentUser(u); setLoggedIn(true); setShowLogin(false); } catch {}
+      try { const u = JSON.parse(session); if (verifyUser(u)) { setCurrentUser(u); setLoggedIn(true); setShowLogin(false); } else { localStorage.removeItem("intcu-user"); } } catch { localStorage.removeItem("intcu-user"); }
     }
   }, []);
 
@@ -299,8 +310,9 @@ function IntcuApp() {
     const users = getUsers();
     const found = users.find(u => u.email === loginEmail.trim() && u.password === btoa(loginPassword));
     if (found) {
-      setCurrentUser(found); setLoggedIn(true); setShowLogin(false);
-      localStorage.setItem("intcu-user", JSON.stringify(found));
+      const signed = signUser(found);
+      setCurrentUser(signed); setLoggedIn(true); setShowLogin(false);
+      localStorage.setItem("intcu-user", JSON.stringify(signed));
       try { const log = JSON.parse(localStorage.getItem("intcu-admin-log") || "[]"); log.unshift({ user: found.email, plan: found.plan || "free", action: "login", ts: new Date().toISOString() }); localStorage.setItem("intcu-admin-log", JSON.stringify(log.slice(0, MAX_LOG_ENTRIES))); } catch {}
     } else { setLoginError("Invalid email or password"); }
   };
@@ -314,8 +326,9 @@ function IntcuApp() {
     const newUser = { email: loginEmail.trim(), password: btoa(loginPassword), name: registerName.trim(), role: "user", created: new Date().toISOString() };
     users.push(newUser);
     localStorage.setItem("intcu-users", JSON.stringify(users));
-    setCurrentUser(newUser); setLoggedIn(true); setShowLogin(false);
-    localStorage.setItem("intcu-user", JSON.stringify(newUser));
+    const signed = signUser(newUser);
+    setCurrentUser(signed); setLoggedIn(true); setShowLogin(false);
+    localStorage.setItem("intcu-user", JSON.stringify(signed));
   };
 
   const logout = () => {
@@ -1300,9 +1313,9 @@ function IntcuApp() {
             <button onClick={() => { setIsRegistering(false); setLoginError(""); }} style={{ flex: 1, padding: "10px 0", background: "transparent", border: "none", borderBottom: !isRegistering ? `2px solid ${T.teal}` : "2px solid transparent", color: !isRegistering ? T.text : T.textDim, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: T.font }}>Sign In</button>
             <button onClick={() => { setIsRegistering(true); setLoginError(""); }} style={{ flex: 1, padding: "10px 0", background: "transparent", border: "none", borderBottom: isRegistering ? `2px solid ${T.teal}` : "2px solid transparent", color: isRegistering ? T.text : T.textDim, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: T.font }}>Register</button>
           </div>
-          {isRegistering && <input value={registerName} onChange={e => setRegisterName(e.target.value)} placeholder="Full name" style={{ width: "100%", height: 48, background: T.bgAlt, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: "0 14px", color: T.text, fontSize: 14, fontFamily: T.font, marginBottom: 10, boxSizing: "border-box", outline: "none" }} />}
-          <input value={loginEmail} onChange={e => setLoginEmail(e.target.value)} placeholder="Email or username" onKeyDown={e => { if (e.key === "Enter" && !isRegistering) handleLogin(); }} style={{ width: "100%", height: 48, background: T.bgAlt, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: "0 14px", color: T.text, fontSize: 14, fontFamily: T.font, marginBottom: 10, boxSizing: "border-box", outline: "none" }} />
-          <input value={loginPassword} onChange={e => setLoginPassword(e.target.value)} placeholder="Password" type="password" onKeyDown={e => { if (e.key === "Enter") isRegistering ? handleRegister() : handleLogin(); }} style={{ width: "100%", height: 48, background: T.bgAlt, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: "0 14px", color: T.text, fontSize: 14, fontFamily: T.font, marginBottom: 16, boxSizing: "border-box", outline: "none" }} />
+          {isRegistering && <input value={registerName} onChange={e => setRegisterName(e.target.value)} placeholder="Full name" maxLength={50} style={{ width: "100%", height: 48, background: T.bgAlt, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: "0 14px", color: T.text, fontSize: 14, fontFamily: T.font, marginBottom: 10, boxSizing: "border-box", outline: "none" }} />}
+          <input value={loginEmail} onChange={e => setLoginEmail(e.target.value)} placeholder="Email or username" maxLength={100} onKeyDown={e => { if (e.key === "Enter" && !isRegistering) handleLogin(); }} style={{ width: "100%", height: 48, background: T.bgAlt, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: "0 14px", color: T.text, fontSize: 14, fontFamily: T.font, marginBottom: 10, boxSizing: "border-box", outline: "none" }} />
+          <input value={loginPassword} onChange={e => setLoginPassword(e.target.value)} placeholder="Password" maxLength={100} type="password" onKeyDown={e => { if (e.key === "Enter") isRegistering ? handleRegister() : handleLogin(); }} style={{ width: "100%", height: 48, background: T.bgAlt, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: "0 14px", color: T.text, fontSize: 14, fontFamily: T.font, marginBottom: 16, boxSizing: "border-box", outline: "none" }} />
           <button onClick={isRegistering ? handleRegister : handleLogin} style={{ width: "100%", height: 48, background: T.teal, color: "#fff", border: "none", borderRadius: T.radius, fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: T.font, letterSpacing: 0.5 }}>{isRegistering ? "Create Account" : "Sign In"}</button>
           {loginError && <div style={{ marginTop: 10, fontSize: 12, color: T.red, textAlign: "center" }}>{loginError}</div>}
         </div>
@@ -1612,7 +1625,7 @@ function IntcuApp() {
           </div>
           {!roomOn ? <>
             <p style={{ fontSize: 11, color: T.textDim, lineHeight: 1.6, margin: "0 0 12px" }}>Sync screens or connect your team. Host creates a room, others join with the code.</p>
-            <input value={myName} onChange={e => setMyName(e.target.value)} placeholder="Your name" style={iStyle} />
+            <input value={myName} onChange={e => setMyName(e.target.value)} placeholder="Your name" maxLength={20} style={iStyle} />
             <div style={{ display: "flex", gap: 6, margin: "10px 0" }}>
               {["left", "center", "right"].map(p => <Btn key={p} onClick={() => setScreenPos(p)} bg={screenPos === p ? T.purple : T.bgCard} style={{ flex: 1, textTransform: "uppercase", fontSize: 10, letterSpacing: 1 }}>{p === "left" ? "◀ L" : p === "right" ? "R ▶" : "● C"}</Btn>)}
             </div>
@@ -1640,7 +1653,7 @@ function IntcuApp() {
               </div>)}
             </div>
             <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
-              <input value={injText} onChange={e => setInjText(e.target.value)} placeholder="Team note..." onKeyDown={e => { if (e.key === "Enter") sendInj(); }} style={{ ...iStyle, flex: 1 }} />
+              <input value={injText} onChange={e => setInjText(e.target.value)} placeholder="Team note..." maxLength={200} onKeyDown={e => { if (e.key === "Enter") sendInj(); }} style={{ ...iStyle, flex: 1 }} />
               <Btn onClick={sendInj} bg={T.red}>Send</Btn>
             </div>
             <Btn onClick={leaveRoom} bg={T.red} style={{ width: "100%", textAlign: "center" }}>Leave Room</Btn>
@@ -1811,7 +1824,7 @@ function IntcuApp() {
             <span style={{ background: "rgba(0,0,0,0.75)", color: "#fff", padding: "4px 14px", borderRadius: 4, fontSize: 14, fontFamily: T.font, fontWeight: 500, lineHeight: 1.6 }}>{captionText}</span>
           </div>}
           {editing ? <div style={{ width: "100%", height: "100%", position: "relative" }} onDragOver={e => e.preventDefault()} onDrop={handleFileDrop}>
-            <textarea value={script} onChange={e => { setScript(e.target.value); setShowWelcome(false); }} placeholder="Paste script here or drop a .txt / .docx file..." style={{ width: "100%", height: "100%", resize: "none", background: "transparent", color: T.text, border: "none", outline: "none", padding: `20px ${margin}%`, fontSize: Math.min(fontSize, EDIT_FONT_CAP), fontFamily: PROMPTER_FONTS[fontIdx].css, lineHeight: 1.8, boxSizing: "border-box" }} />
+            <textarea value={script} onChange={e => { setScript(e.target.value); setShowWelcome(false); }} placeholder="Paste script here or drop a .txt / .docx file..." maxLength={50000} style={{ width: "100%", height: "100%", resize: "none", background: "transparent", color: T.text, border: "none", outline: "none", padding: `20px ${margin}%`, fontSize: Math.min(fontSize, EDIT_FONT_CAP), fontFamily: PROMPTER_FONTS[fontIdx].css, lineHeight: 1.8, boxSizing: "border-box" }} />
             <div style={{ position: "absolute", bottom: 12, right: 12, display: "flex", gap: 6 }}>
               <button onClick={() => exportPDF(script)} title="Export as PDF" style={{ padding: "6px 14px", borderRadius: T.radius, background: T.bgCard, color: T.textDim, border: `1px solid ${T.border}`, cursor: "pointer", fontSize: 11, fontFamily: T.font, fontWeight: 600 }}>📄 PDF</button>
               <button onClick={() => fileRef.current?.click()} style={{ padding: "6px 14px", borderRadius: T.radius, background: T.bgCard, color: T.textDim, border: `1px solid ${T.border}`, cursor: "pointer", fontSize: 11, fontFamily: T.font, fontWeight: 600 }}>📁 Import file</button>
@@ -1868,7 +1881,7 @@ function IntcuApp() {
 
       {/* ═══ WRITER MODE ═══ */}
       {mode === "writer" && <div style={{ flex: 1, overflowY: "auto", padding: 16 }}>
-        <textarea value={wTopic} onChange={e => setWTopic(e.target.value)} placeholder="What's the topic or purpose?" rows={2} style={{ ...iStyle, width: "100%", marginBottom: 10, fontSize: 14, lineHeight: 1.5 }} />
+        <textarea value={wTopic} onChange={e => setWTopic(e.target.value)} placeholder="What's the topic or purpose?" maxLength={500} rows={2} style={{ ...iStyle, width: "100%", marginBottom: 10, fontSize: 14, lineHeight: 1.5 }} />
         <div style={{ display: "flex", gap: 8, marginBottom: 10, flexWrap: "wrap" }}>
           <select value={wFmt} onChange={e => setWFmt(e.target.value)} style={{ ...iStyle, flex: 1, minWidth: 100 }}>{WRITER_FORMATS.map(f => <option key={f}>{f}</option>)}</select>
           <select value={wTone} onChange={e => setWTone(e.target.value)} style={{ ...iStyle, flex: 1, minWidth: 100 }}>{WRITER_TONES.map(t => <option key={t}>{t}</option>)}</select>
@@ -1903,7 +1916,7 @@ function IntcuApp() {
         <div style={{ flex: 1, overflowY: "auto", padding: 16 }}>
           {/* Quick capture */}
           <div style={{ display: "flex", gap: 6, marginBottom: 14 }}>
-            <textarea value={mfInput} onChange={e => setMfInput(e.target.value)} placeholder="Capture an idea, concept, or note..." rows={2}
+            <textarea value={mfInput} onChange={e => setMfInput(e.target.value)} placeholder="Capture an idea, concept, or note..." maxLength={2000} rows={2}
               onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); addNote(); } }}
               style={{ ...iStyle, flex: 1, fontSize: 14, lineHeight: 1.5, resize: "none" }} />
             <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
@@ -2027,7 +2040,7 @@ function IntcuApp() {
           <div style={{ display: "flex", gap: 4, marginBottom: 10, flexWrap: "wrap" }}>
             {COPILOT_STYLES.map(s => <Pill key={s.id} label={`${s.icon} ${s.label}`} active={cpStyle === s.id} onClick={() => setCpStyle(s.id)} color={T.blue} />)}
           </div>
-          <textarea value={cpCtx} onChange={e => setCpCtx(e.target.value)} placeholder="Your context / position (optional)" rows={2} style={{ ...iStyle, width: "100%", marginBottom: 12 }} />
+          <textarea value={cpCtx} onChange={e => setCpCtx(e.target.value)} placeholder="Your context / position (optional)" maxLength={1000} rows={2} style={{ ...iStyle, width: "100%", marginBottom: 12 }} />
           <Btn onClick={startCopilot} bg={T.teal} style={{ width: "100%", padding: "14px", fontSize: 15, textAlign: "center", fontWeight: 700, letterSpacing: 1 }}>🎙️ START LISTENING</Btn>
         </div>
 
