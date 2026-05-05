@@ -107,6 +107,12 @@ const PROMPTER_FONTS = [
 
 const WRITER_TONES = ["Professional", "Conversational", "Inspirational", "Persuasive", "Educational", "Humorous", "Empathetic"];
 const WRITER_FORMATS = ["Speech", "Presentation", "Pitch", "Tutorial", "Story", "Sermon", "Debate Opening", "Toast", "Eulogy", "Sales Call"];
+const LANGUAGES = [
+  "English", "Spanish", "Mandarin", "French", "Arabic", "Portuguese", "Tagalog",
+  "Japanese", "Korean", "German", "Italian", "Russian", "Hindi", "Thai",
+  "Vietnamese", "Indonesian", "Malay", "Dutch", "Turkish", "Polish",
+];
+
 const COPILOT_STYLES = [
   { id: "brief", label: "Brief", icon: "⚡" },
   { id: "detailed", label: "Detailed", icon: "📋" },
@@ -283,6 +289,15 @@ function IntcuApp() {
   const [dyslexia, setDyslexia] = useState(false); // high-contrast, tinted bg, wider spacing
   const [apiCooldown, setApiCooldown] = useState(false);
   const voiceRestarts = useRef(0);
+  // ─── Translator ───
+  const [targetLang, setTargetLang] = useState("");
+
+  // ─── Quote Finder ───
+  const [showQuotes, setShowQuotes] = useState(false);
+  const [quoteTopic, setQuoteTopic] = useState("");
+  const [quoteResults, setQuoteResults] = useState([]);
+  const [quoteLoading, setQuoteLoading] = useState(false);
+
   // ─── Recording, Captions, AI Engine ───
   const [recording, setRecording] = useState(false);
   const [camOn, setCamOn] = useState(false);
@@ -364,12 +379,15 @@ function IntcuApp() {
   const cpCtxRef = useRef("");
   const cpHistRef = useRef([]);
 
+  const targetLangRef = useRef("");
+
   // Keep refs synced (P10-R6)
   useEffect(() => { playRef.current = playing; }, [playing]);
   useEffect(() => { cpNicheRef.current = cpNiche; }, [cpNiche]);
   useEffect(() => { cpStyleRef.current = cpStyle; }, [cpStyle]);
   useEffect(() => { cpCtxRef.current = cpCtx; }, [cpCtx]);
   useEffect(() => { cpHistRef.current = cpHistory; }, [cpHistory]);
+  useEffect(() => { targetLangRef.current = targetLang; }, [targetLang]);
 
   // Derived (P10-R2: bounded)
   const lines = useMemo(() => bounded(script.split("\n"), MAX_LINES), [script]);
@@ -611,6 +629,39 @@ function IntcuApp() {
     setWCoachLoading(false);
   };
 
+  // ─── Translator (P10-R5: guarded) ───
+  const translateScript = async (text) => {
+    if (!text || !targetLang) return text;
+    const result = await callAI(
+      `You are a professional translator. Translate the following script into ${targetLang}. PRESERVE all markers exactly as-is: [PAUSE], [BREATHE], [SLOW], [EMPHASIS], [/EMPHASIS]. Only translate the spoken text. Return ONLY the translated text with markers intact.`,
+      text, 4000, aiEngine
+    );
+    return result || text;
+  };
+
+  // ─── Quote Finder (P10-R5: guarded) ───
+  const searchQuotes = async () => {
+    if (!quoteTopic.trim()) return;
+    setQuoteLoading(true); setQuoteResults([]);
+    const result = await callAI(
+      `You are a quote research assistant. Return EXACTLY 5 verified, real quotes related to the topic. You must only use quotes you are confident are real and correctly attributed. Return as a JSON array with objects: {"quote":"...","author":"...","source":"...","year":"...","context":"..."}. Return ONLY the JSON array, no other text.`,
+      `Find 5 verified quotes about: "${quoteTopic.trim()}"`, 2000, aiEngine
+    );
+    try {
+      const parsed = JSON.parse(result);
+      if (Array.isArray(parsed)) setQuoteResults(bounded(parsed, 5));
+      else setQuoteResults([]);
+    } catch { setQuoteResults([]); show("Quote search failed — try again"); }
+    setQuoteLoading(false);
+  };
+
+  const insertQuote = (q) => {
+    const insert = `\n[PAUSE]\n"${q.quote}"\n— ${q.author}, ${q.source} (${q.year})\n[PAUSE]\n`;
+    setScript(prev => prev + insert);
+    setMode("script"); setEditing(true);
+    show("Quote inserted into script");
+  };
+
   // ─── File Import: .txt, .docx, .pdf (P10-R5: guarded, P10-R2: bounded) ───
   const importFile = async (file) => {
     if (!file) return; // P10-R5
@@ -795,7 +846,15 @@ function IntcuApp() {
     const msgs = [...bounded(cpHistRef.current, MAX_HISTORY), { role: "user", content: `What was said:\n"${transcript.trim()}"\n\nGenerate response.` }];
     const text = await callAI(sys, msgs[msgs.length - 1].content, 1000, aiEngine);
     if (!text) { setCpSuggestion("Connection error — check network."); setCpLoading(false); return; }
-    setCpSuggestion(text);
+    let finalText = text;
+    if (targetLangRef.current) {
+      const translated = await callAI(
+        `Translate the following into ${targetLangRef.current}. Return ONLY the translation, nothing else.`,
+        text, 1000, aiEngine
+      );
+      if (translated) finalText = translated;
+    }
+    setCpSuggestion(finalText);
     setCpHistory(p => bounded([...p, { role: "user", content: `Transcript: "${transcript.trim()}"` }, { role: "assistant", content: text }], MAX_HISTORY));
     setCpExchanges(p => bounded([...p, { heard: transcript.trim(), response: text, time: new Date().toISOString() }], MAX_EXCHANGES));
     cpBufRef.current = "";
@@ -1049,12 +1108,42 @@ function IntcuApp() {
           </div>
         </div>}
 
+        {/* Quote Finder Modal */}
+        {showQuotes && <div style={{ position: "absolute", inset: 0, zIndex: 40, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.85)", backdropFilter: "blur(8px)" }}>
+          <div style={{ background: T.bgCard, border: `1px solid ${T.borderLit}`, borderRadius: 10, width: "92%", maxWidth: 480, maxHeight: "80vh", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", borderBottom: `1px solid ${T.border}` }}>
+              <span style={{ fontFamily: T.font, fontSize: 16, fontWeight: 700 }}>💬 Quote Finder</span>
+              <Btn onClick={() => setShowQuotes(false)} style={{ background: "transparent", border: "none" }}>✕</Btn>
+            </div>
+            <div style={{ display: "flex", gap: 6, padding: "12px 16px", borderBottom: `1px solid ${T.border}` }}>
+              <input value={quoteTopic} onChange={e => setQuoteTopic(e.target.value)} placeholder="Topic (e.g. leadership, courage, innovation)..." onKeyDown={e => { if (e.key === "Enter") searchQuotes(); }} style={{ ...iStyle, flex: 1 }} />
+              <Btn onClick={searchQuotes} disabled={quoteLoading || !quoteTopic.trim()} bg={T.teal}>{quoteLoading ? "..." : "Search"}</Btn>
+            </div>
+            <div style={{ flex: 1, overflowY: "auto", padding: 16 }}>
+              {quoteLoading && <div style={{ textAlign: "center", padding: 20, fontSize: 12, color: T.teal, fontWeight: 600, animation: "pulse 1s infinite" }}>Finding verified quotes...</div>}
+              {quoteResults.length === 0 && !quoteLoading && <div style={{ textAlign: "center", padding: 20, color: T.textMuted, fontSize: 12 }}>Enter a topic to find verified quotes</div>}
+              {quoteResults.map((q, i) => (
+                <div key={i} style={{ background: T.bg, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: 12, marginBottom: 8 }}>
+                  <div style={{ fontSize: 13, lineHeight: 1.6, color: T.text, fontStyle: "italic", marginBottom: 6 }}>"{q.quote}"</div>
+                  <div style={{ fontSize: 11, color: T.textDim, marginBottom: 2 }}>— {q.author}</div>
+                  <div style={{ fontSize: 9, color: T.textMuted, marginBottom: 8 }}>{q.source} ({q.year}){q.context ? ` · ${q.context}` : ""}</div>
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <Btn onClick={() => insertQuote(q)} bg={T.green} style={{ fontSize: 10 }}>→ Script</Btn>
+                    <Btn onClick={() => { navigator.clipboard?.writeText(`"${q.quote}" — ${q.author}, ${q.source} (${q.year})`); show("Copied"); }} style={{ fontSize: 10 }}>Copy</Btn>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>}
+
         {/* Controls */}
         {!fs && <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "5px 10px", gap: 5, borderBottom: `1px solid ${T.border}`, background: T.bgAlt, flexShrink: 0, flexWrap: "wrap" }}>
           <Btn onClick={doPlay} bg={playing ? T.red : T.green} style={{ minWidth: 64 }}>{playing ? "⏸ Pause" : "▶ Play"}</Btn>
           <Btn onClick={doReset}>⟲</Btn>
           <Btn onClick={doEdit}>✎</Btn>
           <Btn onClick={() => setShowLib(true)}>📁</Btn>
+          <Btn onClick={() => setShowQuotes(true)} label="Quote finder">💬</Btn>
           <Btn onClick={() => setFs(!fs)}>{fs ? "⊡" : "⊞"}</Btn>
           {playing && !counting && <>
             <span style={{ fontVariantNumeric: "tabular-nums", fontSize: 12, fontWeight: 600, color: T.textDim, marginLeft: 4 }}>{fmtTime(elapsed)}</span>
@@ -1086,6 +1175,14 @@ function IntcuApp() {
                 {AI_ENGINES.map(e => <option key={e.id} value={e.id}>{e.label} ({e.cost})</option>)}
               </select>
             </div>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
+              <span style={{ fontSize: 8, color: T.textMuted, textTransform: "uppercase", letterSpacing: 2 }}>Translate</span>
+              <select value={targetLang} onChange={e => setTargetLang(e.target.value)} style={{ background: T.bgCard, color: T.text, border: `1px solid ${T.border}`, borderRadius: 4, padding: "2px 6px", fontSize: 10, fontFamily: T.font }}>
+                <option value="">Off</option>
+                {LANGUAGES.map(l => <option key={l} value={l}>{l}</option>)}
+              </select>
+            </div>
+            {targetLang && <Btn onClick={async () => { if (!script.trim()) return; show("Translating..."); const t = await translateScript(script); setScript(t); show(`Translated to ${targetLang}`); }} bg={T.blue} style={{ fontSize: 10 }}>Translate Script</Btn>}
             <Pill label="Captions" active={captions} onClick={() => setCaptions(!captions)} color={T.teal} />
           </div>
         </div>}
@@ -1152,6 +1249,7 @@ function IntcuApp() {
             <span style={{ fontSize: 10, color: T.textDim }}>{wc(wResult)}w · {estTime(wResult)}</span>
             <div style={{ display: "flex", gap: 6 }}>
               <Btn onClick={runCoach} disabled={wCoachLoading} bg={T.cyan} style={{ fontSize: 10 }}>{wCoachLoading ? "Analyzing..." : "🎯 Coach"}</Btn>
+              <Btn onClick={() => setShowQuotes(true)} style={{ fontSize: 10 }}>💬</Btn>
               <Btn onClick={() => { setScript(wResult); setMode("script"); setEditing(true); show("Sent to script"); }} bg={T.green}>→ Script</Btn>
             </div>
           </div>
@@ -1184,6 +1282,7 @@ function IntcuApp() {
             </Btn>
             <Btn onClick={notesToScript} style={{ fontSize: 11 }}>{mfSelected.size > 0 ? "→ Script" : "All → Script"}</Btn>
             <Btn onClick={notesToWriter} disabled={mfSelected.size === 0} style={{ fontSize: 11 }}>→ Writer Context</Btn>
+            <Btn onClick={() => setShowQuotes(true)} style={{ fontSize: 11 }}>💬 Quotes</Btn>
             <Btn onClick={() => { setMfSelected(new Set()); setMfExpanded(null); setMfBrainstorm(""); setMfPromptResult(""); }} style={{ fontSize: 10, color: T.textDim }}>Clear selection</Btn>
           </div>}
 
