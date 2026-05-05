@@ -437,7 +437,7 @@ function IntcuApp() {
     }
     (async () => {
       const result = await callAI(
-        "You are a motivational quote curator and vocabulary teacher. Return exactly ONE powerful, verified motivational quote for today. Also include a sophisticated English vocabulary word of the day with its definition and an example sentence. Output ONLY valid JSON: {\"quote\":\"text\",\"author\":\"Name\",\"word\":\"the word\",\"definition\":\"meaning\",\"example\":\"example sentence using the word\"}. No markdown, no code fences.",
+        "You are a daily inspiration curator for professionals, leaders, and creators. Return ONE powerful quote that is relevant to today's world — think resilience, AI, leadership, entrepreneurship, mental health, innovation, or overcoming adversity. Mix classic wisdom (Marcus Aurelius, Churchill) with modern voices (Brené Brown, Naval Ravikant, Simon Sinek, James Clear, Sara Blakely, Jensen Huang). Never repeat yesterday's pick. Match the quote to the current season or global mood. Also include a sophisticated English vocabulary word useful in business or public speaking, with definition and example sentence. Return ONLY valid JSON: {\"quote\":\"text\",\"author\":\"Full Name\",\"word\":\"the word\",\"definition\":\"meaning\",\"example\":\"example sentence\"}",
         "Give me today's motivational quote and word of the day.", 500, aiEngine
       );
       if (result) {
@@ -1255,7 +1255,7 @@ function IntcuApp() {
             {showWelcome && isDefaultScript && mode === "script" && (() => {
               const h = new Date().getHours();
               const greeting = h < 12 ? "morning" : h < 17 ? "afternoon" : "evening";
-              const q = motd || { quote: "The secret of getting ahead is getting started.", author: "Mark Twain", word: "Eloquence", definition: "The art of fluent, forceful, and persuasive speaking.", example: "Her eloquence captivated the entire audience from the first sentence." };
+              const q = motd || { quote: "Your margin is someone else's opportunity.", author: "Jeff Bezos", word: "Antifragile", definition: "Growing stronger through stress, volatility, and disorder.", example: "The best startups are antifragile — every setback makes their model more resilient." };
               return <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 20, pointerEvents: "none" }}>
                 <div style={{ background: T.bgCard, border: `1px solid ${T.borderLit}`, borderRadius: 12, padding: "28px 32px", maxWidth: 420, width: "88%", boxShadow: "0 12px 48px rgba(0,0,0,0.25)", pointerEvents: "auto" }}>
                   <div style={{ fontSize: 16, fontWeight: 700, fontFamily: T.font, color: T.text, marginBottom: 16 }}>Good {greeting}, welcome to Intcu.</div>
