@@ -331,6 +331,8 @@ function IntcuApp() {
   // ─── Usage Gates ───
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [tourStep, setTourStep] = useState(0);
+  const [showTour, setShowTour] = useState(false);
   const [gatedFeature, setGatedFeature] = useState("");
 
   const getUserPlan = () => currentUser?.plan || "free";
@@ -1486,7 +1488,7 @@ function IntcuApp() {
                     <div style={{ fontSize: 12, color: T.text, lineHeight: 1.5, marginBottom: 4 }}>{q.definition}</div>
                     <div style={{ fontSize: 11, color: T.textDim, fontStyle: "italic", lineHeight: 1.5 }}>"{q.example}"</div>
                   </div>
-                  <button onClick={() => setShowWelcome(false)} style={{ width: "100%", padding: "10px 0", borderRadius: T.radius, background: T.teal, color: "#fff", border: "none", fontSize: 13, fontWeight: 700, fontFamily: T.font, cursor: "pointer", letterSpacing: 0.5 }}>Start Writing</button>
+                  <button onClick={() => { setShowWelcome(false); if (!localStorage.getItem("intcu-tour-done")) { setTourStep(1); setShowTour(true); } }} style={{ width: "100%", padding: "10px 0", borderRadius: T.radius, background: T.teal, color: "#fff", border: "none", fontSize: 13, fontWeight: 700, fontFamily: T.font, cursor: "pointer", letterSpacing: 0.5 }}>Start Writing</button>
                 </div>
               </div>;
             })()}
@@ -1718,6 +1720,46 @@ function IntcuApp() {
         </div>}
       </div>}
 
+      {/* ─── Onboarding Tour ─── */}
+      {showTour && (() => {
+        const TOUR = [
+          null,
+          { title: "Welcome to Intcu", text: "Your intelligent teleprompter with AI conversation copilot. Let's take a quick tour.", pos: "center" },
+          { title: "Script Mode", text: "This is Script mode — your teleprompter. Type or paste your script, hit Play, and it scrolls for you. Voice scroll follows your speech.", pos: "top", top: 50 },
+          { title: "Settings Strip", text: "These controls adjust your experience. Tap any pill to toggle features. The strip scrolls horizontally — swipe for more options.", pos: "top", top: 140 },
+          { title: "Writer Mode", text: "Writer generates scripts with AI. Pick a format, tone, and duration. The Script Coach analyses your result.", pos: "top", top: 50 },
+          { title: "MyFile Mode", text: "MyFile captures your ideas. Brainstorm with AI, then build structured prompts or send notes to the teleprompter.", pos: "top", top: 50 },
+          { title: "Copilot Mode", text: "Copilot is the magic. It listens to live conversations and feeds you smart responses in real time. Pick from 10 scenarios.", pos: "top", top: 50 },
+          { title: "Theme & Sync", text: "Switch light/dark mode here. The sync button creates team rooms for multi-screen collaboration.", pos: "topright" },
+          { title: "You're ready!", text: "Press ? anytime for keyboard shortcuts. Hit 💬 to find quotes. Use the Translate dropdown for multilingual scripts.", pos: "center" },
+        ];
+        const step = TOUR[tourStep]; if (!step) return null;
+        const isCentered = step.pos === "center";
+        const finishTour = () => { localStorage.setItem("intcu-tour-done", "true"); setShowTour(false); setTourStep(0); };
+        const cardStyle = { background: T.bgCard, border: `1px solid ${T.borderLit}`, borderRadius: 12, padding: "20px 24px", maxWidth: 320, width: "90%", boxShadow: "0 12px 48px rgba(0,0,0,0.4)", zIndex: 101 };
+        const spotStyle = step.pos === "topright" ? { position: "fixed", top: 4, right: 4, width: 200, height: 38, borderRadius: 8, boxShadow: "0 0 0 9999px rgba(0,0,0,0.6)", zIndex: 100, pointerEvents: "none" } : step.top ? { position: "fixed", top: step.top, left: 0, right: 0, height: 48, boxShadow: "0 0 0 9999px rgba(0,0,0,0.6)", zIndex: 100, pointerEvents: "none" } : null;
+        return <div style={{ position: "fixed", inset: 0, zIndex: 99 }}>
+          {!isCentered && spotStyle && <div style={spotStyle} />}
+          <div style={{ position: "fixed", inset: 0, background: isCentered ? "rgba(0,0,0,0.7)" : "transparent", zIndex: isCentered ? 100 : 98, display: "flex", alignItems: isCentered ? "center" : "flex-start", justifyContent: step.pos === "topright" ? "flex-end" : "center", paddingTop: isCentered ? 0 : ((step.top || 50) + 60) + "px", paddingRight: step.pos === "topright" ? 12 : 0 }}>
+            <div style={cardStyle}>
+              <div style={{ fontSize: 15, fontWeight: 700, fontFamily: T.font, marginBottom: 8, color: T.text }}>{step.title}</div>
+              <div style={{ fontSize: 13, lineHeight: 1.6, color: T.textDim, marginBottom: 16 }}>{step.text}</div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div style={{ display: "flex", gap: 6 }}>
+                  {tourStep > 1 && <button onClick={() => setTourStep(s => s - 1)} style={{ padding: "6px 14px", borderRadius: T.radius, background: T.bgCard, border: `1px solid ${T.border}`, color: T.textDim, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: T.font }}>← Back</button>}
+                  <button onClick={finishTour} style={{ padding: "6px 14px", borderRadius: T.radius, background: "transparent", border: "none", color: T.textMuted, fontSize: 11, cursor: "pointer", fontFamily: T.font }}>{tourStep === 8 ? "" : "Skip"}</button>
+                </div>
+                <button onClick={tourStep === 8 ? finishTour : () => setTourStep(s => s + 1)} style={{ padding: "8px 18px", borderRadius: T.radius, background: T.teal, color: "#fff", border: "none", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: T.font }}>{tourStep === 8 ? "Start Using Intcu" : "Next →"}</button>
+              </div>
+              <div style={{ display: "flex", justifyContent: "center", gap: 4, marginTop: 12 }}>
+                {[1,2,3,4,5,6,7,8].map(n => <div key={n} style={{ width: 6, height: 6, borderRadius: "50%", background: n === tourStep ? T.teal : T.border, transition: "background 0.2s" }} />)}
+              </div>
+              <div style={{ textAlign: "center", fontSize: 9, color: T.textMuted, marginTop: 6 }}>{tourStep} of 8</div>
+            </div>
+          </div>
+        </div>;
+      })()}
+
       {/* ─── Shortcuts Modal ─── */}
       {showShortcuts && <div style={{ position: "fixed", inset: 0, zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.85)", backdropFilter: "blur(8px)" }} onClick={() => setShowShortcuts(false)}>
         <div onClick={e => e.stopPropagation()} style={{ background: T.bgCard, border: `1px solid ${T.borderLit}`, borderRadius: 12, padding: "24px 28px", width: "92%", maxWidth: 520, maxHeight: "80vh", overflowY: "auto" }}>
@@ -1746,6 +1788,9 @@ function IntcuApp() {
             </div>
           </div>
           <div style={{ marginTop: 16, textAlign: "center", fontSize: 10, color: T.textMuted }}>Press <kbd style={{ fontFamily: "monospace", color: T.teal, border: `1px solid ${T.border}`, borderRadius: 3, padding: "1px 5px", fontSize: 10 }}>?</kbd> to toggle this panel</div>
+          <div style={{ textAlign: "center", marginTop: 8 }}>
+            <button onClick={() => { setShowShortcuts(false); localStorage.removeItem("intcu-tour-done"); setTourStep(1); setShowTour(true); }} style={{ background: "transparent", border: "none", color: T.textMuted, fontSize: 10, cursor: "pointer", fontFamily: T.font, textDecoration: "underline" }}>Restart onboarding tour</button>
+          </div>
         </div>
       </div>}
 
