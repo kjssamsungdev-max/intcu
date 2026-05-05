@@ -269,6 +269,7 @@ function IntcuApp() {
   const [loggedIn, setLoggedIn] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
   const [showLogin, setShowLogin] = useState(true);
+  const [showLanding, setShowLanding] = useState(true);
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
   const [loginError, setLoginError] = useState("");
@@ -1198,6 +1199,93 @@ function IntcuApp() {
   // RENDER
   // ═══════════════════════════════════════════════
   const orientStyle = orientation === "landscape" ? { transform: "rotate(90deg)", transformOrigin: "center", width: "100vh", height: "100vw", position: "fixed", top: "50%", left: "50%", marginTop: "-50vw", marginLeft: "-50vh" } : orientation === "portrait" ? { maxWidth: 480, margin: "0 auto" } : {};
+
+  // ─── Landing Page (SEO-crawlable) ───
+  if ((!loggedIn || showLogin) && showLanding) {
+    const secStyle = { padding: "60px 20px", maxWidth: 960, margin: "0 auto" };
+    const cardGrid = { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 16 };
+    return (
+      <div style={{ width: "100%", minHeight: "100vh", background: T.bg, color: T.text, fontFamily: T.font, overflowY: "auto" }}>
+        {/* Nav */}
+        <nav style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 24px", background: T.chrome, position: "sticky", top: 0, zIndex: 10 }}>
+          <svg viewBox="0 0 200 60" style={{ width: 72, height: 22 }} role="img" aria-label="Intcu logo"><text x="10" y="43" fontFamily="'Sora', sans-serif" fontSize="38" fontWeight="700" letterSpacing="2" fill={T.chromeText}>int</text><text x="102" y="43" fontFamily="'Sora', sans-serif" fontSize="38" fontWeight="700" letterSpacing="2" fill={T.teal}>cu</text><circle cx="155" cy="28" r="4" fill={T.teal} opacity="0.9"/></svg>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button onClick={() => { setShowLanding(false); setIsRegistering(false); }} style={{ padding: "8px 18px", borderRadius: T.radius, background: "transparent", border: `1px solid ${T.chromeBorder}`, color: T.chromeText, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: T.font }}>Sign In</button>
+            <button onClick={() => { setShowLanding(false); setIsRegistering(true); }} style={{ padding: "8px 18px", borderRadius: T.radius, background: T.teal, border: "none", color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: T.font }}>Get Started Free</button>
+          </div>
+        </nav>
+
+        {/* Hero */}
+        <section style={{ textAlign: "center", padding: "80px 20px 60px" }}>
+          <svg viewBox="0 0 200 60" style={{ width: 160, height: 48, marginBottom: 12 }} role="img" aria-label="Intcu"><text x="10" y="43" fontFamily="'Sora', sans-serif" fontSize="38" fontWeight="700" letterSpacing="2" fill={T.text}>int</text><text x="102" y="43" fontFamily="'Sora', sans-serif" fontSize="38" fontWeight="700" letterSpacing="2" fill={T.teal}>cu</text><circle cx="155" cy="28" r="4" fill={T.teal} opacity="0.9"/><circle cx="155" cy="28" r="7" fill={T.teal} opacity="0.15"/></svg>
+          <div style={{ fontSize: 13, color: T.teal, letterSpacing: 2, fontWeight: 600, marginBottom: 20 }}>The Intelligent Cue</div>
+          <h1 style={{ fontSize: 32, fontWeight: 700, lineHeight: 1.3, maxWidth: 600, margin: "0 auto 12px", fontFamily: T.font }}>AI-powered teleprompter with live conversation copilot</h1>
+          <p style={{ fontSize: 16, color: T.textDim, maxWidth: 480, margin: "0 auto 28px", lineHeight: 1.6 }}>Speak smarter. Respond instantly. 10 coaching scenarios, 8 AI engines, team sync — free to start.</p>
+          <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
+            <button onClick={() => { setShowLanding(false); setIsRegistering(true); }} style={{ padding: "14px 32px", borderRadius: T.radius, background: T.teal, color: "#fff", border: "none", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: T.font }}>Get Started Free</button>
+            <a href="#features" style={{ padding: "14px 32px", borderRadius: T.radius, background: "transparent", color: T.text, border: `1px solid ${T.border}`, fontSize: 15, fontWeight: 600, cursor: "pointer", fontFamily: T.font, textDecoration: "none" }}>See Features ↓</a>
+          </div>
+        </section>
+
+        {/* Features */}
+        <section id="features" style={secStyle}>
+          <h2 style={{ fontSize: 22, fontWeight: 700, textAlign: "center", marginBottom: 28 }}>Everything you need to speak with confidence</h2>
+          <div style={cardGrid}>
+            {[
+              ["📝", "Smart Teleprompter", "Auto-scroll, voice control, adaptive speed, cue markers, word-by-word tracking, and dyslexia mode."],
+              ["✨", "AI Script Writer", "Generate scripts in 10 formats — speeches, pitches, sermons, toasts — with coaching analysis."],
+              ["🎙️", "Conversation Copilot", "Real-time AI responses for negotiations, interviews, pitches, debates, and podcasts."],
+              ["📡", "Team Sync", "Multi-screen rooms with tactical injections. Host controls scroll, team sees suggestions."],
+              ["🌐", "Translator", "Translate scripts and copilot responses into 20+ languages. Preserve cue markers."],
+              ["💬", "Quote Finder", "Verified quotes on any topic. One tap to insert into your script with proper attribution."],
+            ].map(([icon, title, desc]) => (
+              <article key={title} style={{ background: T.bgCard, border: `1px solid ${T.border}`, borderRadius: 10, padding: "20px 22px" }}>
+                <div style={{ fontSize: 28, marginBottom: 8 }} role="img" aria-label={title}>{icon}</div>
+                <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 6 }}>{title}</h3>
+                <p style={{ fontSize: 13, color: T.textDim, lineHeight: 1.6 }}>{desc}</p>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        {/* Engines */}
+        <section style={{ ...secStyle, textAlign: "center" }}>
+          <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 20 }}>Powered by 8 AI engines</h2>
+          <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 14 }}>
+            {["Claude Sonnet", "GPT-5 mini", "Gemini Flash", "Grok 4.1", "DeepSeek V4", "Mistral Large", "Llama 4 (Groq)", "MiniMax M2.7"].map(name => (
+              <span key={name} style={{ padding: "8px 16px", borderRadius: 20, background: T.bgCard, border: `1px solid ${T.border}`, fontSize: 12, fontWeight: 600, color: T.textDim }}>{name}</span>
+            ))}
+          </div>
+        </section>
+
+        {/* Pricing */}
+        <section style={secStyle}>
+          <h2 style={{ fontSize: 22, fontWeight: 700, textAlign: "center", marginBottom: 28 }}>Simple pricing</h2>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16 }}>
+            {[
+              ["Free", "$0", "forever", ["Full teleprompter", "3 AI calls/day", "Free engines", "10 saved scripts"], false],
+              ["Pro", "$12", "/month", ["Unlimited AI calls", "All 8 engines", "Copilot + Coach", "Recording + Export", "Translate + Quotes"], true],
+              ["Team", "$29", "/seat/month", ["Everything in Pro", "Room sync (10 members)", "Team copilot", "Tactical injections", "Admin dashboard"], false],
+            ].map(([name, price, period, features, featured]) => (
+              <article key={name} style={{ background: T.bgCard, border: `1px solid ${featured ? T.teal : T.border}`, borderRadius: 10, padding: "24px 22px", position: "relative" }}>
+                {featured && <div style={{ position: "absolute", top: -10, left: "50%", transform: "translateX(-50%)", background: T.teal, color: "#fff", fontSize: 9, fontWeight: 700, padding: "2px 12px", borderRadius: 10, letterSpacing: 1 }}>POPULAR</div>}
+                <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 4 }}>{name}</h3>
+                <div style={{ marginBottom: 14 }}><span style={{ fontSize: 32, fontWeight: 700, color: T.teal }}>{price}</span><span style={{ fontSize: 12, color: T.textDim }}> {period}</span></div>
+                {features.map(f => <div key={f} style={{ fontSize: 12, color: T.textDim, padding: "4px 0", borderBottom: `1px solid ${T.border}` }}>{f}</div>)}
+                <button onClick={() => { setShowLanding(false); setIsRegistering(true); }} style={{ width: "100%", marginTop: 16, padding: "10px 0", borderRadius: T.radius, background: featured ? T.teal : T.bgAlt, color: featured ? "#fff" : T.text, border: featured ? "none" : `1px solid ${T.border}`, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: T.font }}>{name === "Free" ? "Get Started" : `Choose ${name}`}</button>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        {/* Footer */}
+        <footer style={{ textAlign: "center", padding: "32px 20px", borderTop: `1px solid ${T.border}`, fontSize: 11, color: T.textMuted }}>
+          <p>intcu.com — The Intelligent Cue</p>
+          <p style={{ marginTop: 4 }}>Artisans F&B Corp · Puerto Princesa, Philippines</p>
+        </footer>
+      </div>
+    );
+  }
 
   // ─── Login Page ───
   if (!loggedIn || showLogin) return (
