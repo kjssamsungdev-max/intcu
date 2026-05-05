@@ -277,9 +277,9 @@ const Knob = ({ label, value, onChange, min, max, step = 1, unit = "" }) => (
   <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
     <span style={{ fontSize: 8, textTransform: "uppercase", letterSpacing: 2, color: T.textMuted, fontFamily: T.font }}>{label}</span>
     <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-      <Btn onClick={() => onChange(Math.max(min, +(value - step).toFixed(1)))} style={{ width: 24, height: 24, padding: 0, fontSize: 14 }}>−</Btn>
+      <Btn onClick={(e) => { e.stopPropagation(); onChange(Math.max(min, +(value - step).toFixed(1))); }} style={{ width: 24, height: 24, padding: 0, fontSize: 14 }}>−</Btn>
       <span style={{ fontVariantNumeric: "tabular-nums", fontSize: 13, fontWeight: 600, color: T.text, minWidth: 28, textAlign: "center", fontFamily: T.font }}>{value}{unit}</span>
-      <Btn onClick={() => onChange(Math.min(max, +(value + step).toFixed(1)))} style={{ width: 24, height: 24, padding: 0, fontSize: 14 }}>+</Btn>
+      <Btn onClick={(e) => { e.stopPropagation(); onChange(Math.min(max, +(value + step).toFixed(1))); }} style={{ width: 24, height: 24, padding: 0, fontSize: 14 }}>+</Btn>
     </div>
   </div>
 );
@@ -469,6 +469,7 @@ function IntcuApp() {
   const [script, setScript] = useState(`Welcome to Intcu — The Intelligent Cue.\n\nSpeak smarter. Respond instantly.\n\n[PAUSE]\n\nSwitch to Writer to generate scripts with AI. Switch to Copilot for live conversation intelligence.\n\n[BREATHE]\n\nUse cue markers: [PAUSE], [SLOW], [BREATHE] on their own line.\nWrap words in [EMPHASIS]like this[/EMPHASIS] for highlights.\n\nKeyboard: Space play/pause · ↑↓ speed · R reset · E edit · M mirror\n\n[PAUSE]\n\nNever miss a perfect line again.`);
   const [playing, setPlaying] = useState(false);
   const [speed, setSpeed] = useState(3);
+  const speedRef = useRef(3);
   const [fontSize, setFontSize] = useState(44);
   const [mirrored, setMirrored] = useState(false);
   const [editing, setEditing] = useState(true);
@@ -591,6 +592,7 @@ function IntcuApp() {
   const targetLangRef = useRef("");
 
   // Keep refs synced (P10-R6)
+  useEffect(() => { speedRef.current = speed; }, [speed]);
   useEffect(() => { playRef.current = playing; }, [playing]);
   useEffect(() => { cpNicheRef.current = cpNiche; }, [cpNiche]);
   useEffect(() => { cpStyleRef.current = cpStyle; }, [cpStyle]);
@@ -683,12 +685,12 @@ function IntcuApp() {
     if (!scrollRef.current) return;
     const el = scrollRef.current;
     const m = lineMults[getActive()] || 1;
-    el.scrollTop += (speed * 60 * dt * m) / 1000;
+    el.scrollTop += (speedRef.current * 60 * dt * m) / 1000;
     const mx = el.scrollHeight - el.clientHeight;
     if (mx > 0) setProgress(Math.min((el.scrollTop / mx) * 100, 100));
     if (mx > 0 && el.scrollTop >= mx) { setPlaying(false); return; }
     animRef.current = requestAnimationFrame((t) => { if (animateFnRef.current) animateFnRef.current(t); });
-  }, [speed, getActive, lineMults]);
+  }, [getActive, lineMults]);
   animateFnRef.current = animate;
 
   useEffect(() => {
