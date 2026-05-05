@@ -275,11 +275,11 @@ const Btn = ({ children, onClick, bg, disabled, style: s, label, title }) => (
 
 const Knob = ({ label, value, onChange, min, max, step = 1, unit = "" }) => (
   <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
-    <span style={{ fontSize: 8, textTransform: "uppercase", letterSpacing: 2, color: T.textMuted, fontFamily: T.font }}>{label}</span>
+    <span style={{ fontSize: 8, textTransform: "uppercase", letterSpacing: 2, color: "#a1a1aa", fontFamily: T.font }}>{label}</span>
     <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-      <Btn onClick={(e) => { e.stopPropagation(); onChange(Math.max(min, +(value - step).toFixed(1))); }} style={{ width: 24, height: 24, padding: 0, fontSize: 14 }}>−</Btn>
-      <span style={{ fontVariantNumeric: "tabular-nums", fontSize: 13, fontWeight: 600, color: T.text, minWidth: 28, textAlign: "center", fontFamily: T.font }}>{value}{unit}</span>
-      <Btn onClick={(e) => { e.stopPropagation(); onChange(Math.min(max, +(value + step).toFixed(1))); }} style={{ width: 24, height: 24, padding: 0, fontSize: 14 }}>+</Btn>
+      <Btn onClick={(e) => { e.stopPropagation(); onChange(Math.max(min, +(value - step).toFixed(1))); }} style={{ width: 24, height: 24, padding: 0, fontSize: 14, color: "#e4e4e7" }}>−</Btn>
+      <span style={{ fontVariantNumeric: "tabular-nums", fontSize: 13, fontWeight: 600, color: "#e4e4e7", minWidth: 28, textAlign: "center", fontFamily: T.font }}>{value}{unit}</span>
+      <Btn onClick={(e) => { e.stopPropagation(); onChange(Math.min(max, +(value + step).toFixed(1))); }} style={{ width: 24, height: 24, padding: 0, fontSize: 14, color: "#e4e4e7" }}>+</Btn>
     </div>
   </div>
 );
@@ -510,7 +510,7 @@ function IntcuApp() {
   // ─── Recording, Captions, AI Engine ───
   const [recording, setRecording] = useState(false);
   const [camOn, setCamOn] = useState(false);
-  const [captions, setCaptions] = useState(true);
+  const [captions, setCaptions] = useState(false);
   const [captionText, setCaptionText] = useState("");
   const [aiEngine, setAiEngine] = useState("claude"); // claude | grok | deepseek
   const mediaRecRef = useRef(null);
