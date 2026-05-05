@@ -1814,8 +1814,20 @@ function IntcuApp() {
             {pace && <span style={{ fontSize: 8, fontWeight: 700, color: pace.c, letterSpacing: 1 }}>{pace.l}</span>}
           </>}
           <div style={{ width: 1, height: 18, background: T.border, margin: "0 2px" }} />
-          <Knob label="Speed" value={speed} onChange={setSpeed} min={1} max={10} />
-          <Knob label="Size" value={fontSize} onChange={setFontSize} min={18} max={96} step={2} />
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
+            <span style={{ fontSize: 8, textTransform: "uppercase", letterSpacing: 2, color: "#a1a1aa" }}>Speed</span>
+            <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+              <input type="range" min={1} max={10} value={speed} onChange={(e) => { e.stopPropagation(); setSpeed(Number(e.target.value)); }} style={{ width: 80, height: 6, accentColor: "#00B8A9", cursor: "pointer" }} title={"Speed: " + speed} />
+              <span style={{ fontSize: 12, fontWeight: 600, color: "#e4e4e7", minWidth: 20, textAlign: "center", fontFamily: T.font }}>{speed}</span>
+            </div>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
+            <span style={{ fontSize: 8, textTransform: "uppercase", letterSpacing: 2, color: "#a1a1aa" }}>Size</span>
+            <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+              <input type="range" min={18} max={96} step={2} value={fontSize} onChange={(e) => { e.stopPropagation(); setFontSize(Number(e.target.value)); }} style={{ width: 80, height: 6, accentColor: "#00B8A9", cursor: "pointer" }} title={"Size: " + fontSize} />
+              <span style={{ fontSize: 12, fontWeight: 600, color: "#e4e4e7", minWidth: 24, textAlign: "center", fontFamily: T.font }}>{fontSize}</span>
+            </div>
+          </div>
         </div>}
 
         {/* Settings strip */}
