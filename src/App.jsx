@@ -648,10 +648,11 @@ function IntcuApp() {
       `Find 5 verified quotes about: "${quoteTopic.trim()}"`, 2000, aiEngine
     );
     try {
-      const parsed = JSON.parse(result);
+      const clean = result.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+      const parsed = JSON.parse(clean);
       if (Array.isArray(parsed)) setQuoteResults(bounded(parsed, 5));
       else setQuoteResults([]);
-    } catch { setQuoteResults([]); show("Quote search failed — try again"); }
+    } catch { setQuoteResults([]); show("Quote format error — try again"); }
     setQuoteLoading(false);
   };
 
