@@ -277,7 +277,7 @@ const Knob = ({ label, value, onChange, min, max, step = 1, unit = "" }) => (
   <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
     <span style={{ fontSize: 8, textTransform: "uppercase", letterSpacing: 2, color: "#a1a1aa", fontFamily: T.font }}>{label}</span>
     <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-      <Btn onClick={(e) => { e.stopPropagation(); onChange(Math.max(min, +(value - step).toFixed(1))); }} style={{ width: 24, height: 24, padding: 0, fontSize: 14, color: "#e4e4e7" }}>−</Btn>
+      <Btn onClick={(e) => { e.stopPropagation(); e.preventDefault(); console.log("KNOB MINUS clicked, new value:", Math.max(min, +(value - step).toFixed(1))); onChange(Math.max(min, +(value - step).toFixed(1))); }} style={{ width: 24, height: 24, padding: 0, fontSize: 14, color: "#e4e4e7" }}>−</Btn>
       <span style={{ fontVariantNumeric: "tabular-nums", fontSize: 13, fontWeight: 600, color: "#e4e4e7", minWidth: 28, textAlign: "center", fontFamily: T.font }}>{value}{unit}</span>
       <Btn onClick={(e) => { e.stopPropagation(); onChange(Math.min(max, +(value + step).toFixed(1))); }} style={{ width: 24, height: 24, padding: 0, fontSize: 14, color: "#e4e4e7" }}>+</Btn>
     </div>
@@ -1799,7 +1799,7 @@ function IntcuApp() {
 
         {/* Controls */}
         {!fs && <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "5px 10px", gap: 5, borderBottom: `1px solid ${T.chromeBorder}`, background: T.chromeMid, flexShrink: 0, flexWrap: "wrap" }}>
-          <Btn onClick={doPlay} bg={playing ? T.red : T.green} style={{ minWidth: 64 }} title="Play / Pause (Space)">{playing ? "⏸ Pause" : "▶ Play"}</Btn>
+          <Btn onClick={() => { console.log("PLAY CLICKED, currently playing:", playing); doPlay(); }} bg={playing ? T.red : T.green} style={{ minWidth: 64 }} title="Play / Pause (Space)">{playing ? "⏸ Pause" : "▶ Play"}</Btn>
           <Btn onClick={doReset} title="Reset to start (R)">⟲</Btn>
           <Btn onClick={doEdit} title="Edit script (E)">✎</Btn>
           <Btn onClick={() => setShowLib(true)} title="Script library">📁</Btn>
