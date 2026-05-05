@@ -223,8 +223,8 @@ async function callAI(system, userMsg, maxTokens = 1000, engine = "claude") {
 }
 
 // ─── Shared UI atoms (P10-R4: each ≤ 15 lines) ───
-const Btn = ({ children, onClick, bg, disabled, style: s, label }) => (
-  <button disabled={disabled} onClick={onClick} aria-label={label || (typeof children === "string" ? children : undefined)} style={{ padding: "7px 14px", borderRadius: T.radius, background: bg || T.bgCard, color: T.text, border: `1px solid ${T.border}`, cursor: disabled ? "default" : "pointer", fontSize: 12, fontFamily: T.font, fontWeight: 600, whiteSpace: "nowrap", opacity: disabled ? 0.4 : 1, transition: "all 0.15s", ...s }}>{children}</button>
+const Btn = ({ children, onClick, bg, disabled, style: s, label, title }) => (
+  <button disabled={disabled} onClick={onClick} title={title} aria-label={label || (typeof children === "string" ? children : undefined)} style={{ padding: "7px 14px", borderRadius: T.radius, background: bg || T.bgCard, color: T.text, border: `1px solid ${T.border}`, cursor: disabled ? "default" : "pointer", fontSize: 12, fontFamily: T.font, fontWeight: 600, whiteSpace: "nowrap", opacity: disabled ? 0.4 : 1, transition: "all 0.15s", ...s }}>{children}</button>
 );
 
 const Knob = ({ label, value, onChange, min, max, step = 1, unit = "" }) => (
@@ -238,8 +238,8 @@ const Knob = ({ label, value, onChange, min, max, step = 1, unit = "" }) => (
   </div>
 );
 
-const Pill = ({ label, active, onClick, color = T.red }) => (
-  <button onClick={onClick} style={{ padding: "4px 12px", borderRadius: 20, background: active ? color : "transparent", border: `1px solid ${active ? color : T.border}`, color: active ? "#fff" : T.textDim, fontSize: 10, fontWeight: 600, cursor: "pointer", fontFamily: T.font, letterSpacing: 0.5, transition: "all 0.15s" }}>{label}</button>
+const Pill = ({ label, active, onClick, color = T.red, title }) => (
+  <button onClick={onClick} title={title} style={{ padding: "4px 12px", borderRadius: 20, background: active ? color : "transparent", border: `1px solid ${active ? color : T.border}`, color: active ? "#fff" : T.textDim, fontSize: 10, fontWeight: 600, cursor: "pointer", fontFamily: T.font, letterSpacing: 0.5, transition: "all 0.15s" }}>{label}</button>
 );
 
 const Toast = ({ msg, onDone }) => {
@@ -1008,8 +1008,8 @@ function IntcuApp() {
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
           {mode === "script" && <span style={{ fontSize: 9, color: T.textMuted }}>{words}w · {readTime}</span>}
-          <button onClick={() => setDarkMode(!darkMode)} style={{ width: 36, height: 36, borderRadius: 8, background: darkMode ? T.bgCard : T.border, border: "1px solid " + T.borderLit, cursor: "pointer", fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center" }}>{darkMode ? "☀️" : "🌙"}</button>
-          <Btn onClick={() => setShowSync(true)} bg={roomOn ? T.purple : T.bgCard} style={{ fontSize: 10, padding: "4px 10px" }}>{roomOn ? `📡 ${members.length}` : "📡"}</Btn>
+          <button onClick={() => setDarkMode(!darkMode)} title="Switch light / dark mode" style={{ width: 36, height: 36, borderRadius: 8, background: darkMode ? T.bgCard : T.border, border: "1px solid " + T.borderLit, cursor: "pointer", fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center" }}>{darkMode ? "☀️" : "🌙"}</button>
+          <Btn onClick={() => setShowSync(true)} bg={roomOn ? T.purple : T.bgCard} style={{ fontSize: 10, padding: "4px 10px" }} title="Multi-screen sync & team rooms">{roomOn ? `📡 ${members.length}` : "📡"}</Btn>
         </div>
       </div>}
 
@@ -1140,12 +1140,12 @@ function IntcuApp() {
 
         {/* Controls */}
         {!fs && <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "5px 10px", gap: 5, borderBottom: `1px solid ${T.border}`, background: T.bgAlt, flexShrink: 0, flexWrap: "wrap" }}>
-          <Btn onClick={doPlay} bg={playing ? T.red : T.green} style={{ minWidth: 64 }}>{playing ? "⏸ Pause" : "▶ Play"}</Btn>
-          <Btn onClick={doReset}>⟲</Btn>
-          <Btn onClick={doEdit}>✎</Btn>
-          <Btn onClick={() => setShowLib(true)}>📁</Btn>
+          <Btn onClick={doPlay} bg={playing ? T.red : T.green} style={{ minWidth: 64 }} title="Play / Pause (Space)">{playing ? "⏸ Pause" : "▶ Play"}</Btn>
+          <Btn onClick={doReset} title="Reset to start (R)">⟲</Btn>
+          <Btn onClick={doEdit} title="Edit script (E)">✎</Btn>
+          <Btn onClick={() => setShowLib(true)} title="Script library">📁</Btn>
           <Btn onClick={() => setShowQuotes(true)} label="Quote finder" title="Quote finder" style={{ minHeight: 40, fontSize: 16 }}>💬</Btn>
-          <Btn onClick={() => setFs(!fs)}>{fs ? "⊡" : "⊞"}</Btn>
+          <Btn onClick={() => setFs(!fs)} title="Fullscreen (double-tap)">{fs ? "⊡" : "⊞"}</Btn>
           {playing && !counting && <>
             <span style={{ fontVariantNumeric: "tabular-nums", fontSize: 12, fontWeight: 600, color: T.textDim, marginLeft: 4 }}>{fmtTime(elapsed)}</span>
             {pace && <span style={{ fontSize: 8, fontWeight: 700, color: pace.c, letterSpacing: 1 }}>{pace.l}</span>}
@@ -1161,7 +1161,7 @@ function IntcuApp() {
             <Knob label="Margin" value={margin} onChange={setMargin} min={0} max={40} step={5} unit="%" />
             <Knob label="Spacing" value={spacing} onChange={setSpacing} min={1.0} max={3.0} step={0.1} />
             <Knob label="Guide" value={guidePos} onChange={setGuidePos} min={15} max={50} step={5} unit="%" />
-            <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>{[["Mirror", mirrored, () => setMirrored(!mirrored), T.red], ["Adapt", adaptive, () => setAdaptive(!adaptive), T.amber], ["Focus", focus, () => setFocus(!focus), T.purple], ["Voice", voiceOn, () => { if (voiceOn) { setVoiceOn(false); stopVoice(); } else setVoiceOn(true); }, T.blue], ["Cues", cues, () => setCues(!cues), T.amber], ["Dyslexia", dyslexia, () => { setDyslexia(!dyslexia); if (!dyslexia) { setFontIdx(3); setSpacing(2.2); setFontSize(48); show("Dyslexia mode on — Lexend font, wider spacing"); } }, T.green]].map(([l, a, fn, c]) => <Pill key={l} label={l} active={a} onClick={fn} color={c} />)}</div>
+            <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>{[["Mirror", mirrored, () => setMirrored(!mirrored), T.red, "Flip text horizontally for glass rigs (M)"], ["Adapt", adaptive, () => setAdaptive(!adaptive), T.amber, "Adjust scroll speed per line density"], ["Focus", focus, () => setFocus(!focus), T.purple, "Highlight active line, dim others"], ["Voice", voiceOn, () => { if (voiceOn) { setVoiceOn(false); stopVoice(); } else setVoiceOn(true); }, T.blue, "Scroll follows your voice"], ["Cues", cues, () => setCues(!cues), T.amber, "Show [PAUSE] [SLOW] [BREATHE] markers"], ["Dyslexia", dyslexia, () => { setDyslexia(!dyslexia); if (!dyslexia) { setFontIdx(3); setSpacing(2.2); setFontSize(48); show("Dyslexia mode on — Lexend font, wider spacing"); } }, T.green, "Lexend font, tinted background, wider spacing"]].map(([l, a, fn, c, t]) => <Pill key={l} label={l} active={a} onClick={fn} color={c} title={t} />)}</div>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
               <span style={{ fontSize: 8, color: T.textMuted, textTransform: "uppercase", letterSpacing: 2 }}>Font</span>
               <select value={fontIdx} onChange={e => setFontIdx(+e.target.value)} style={{ background: T.bgCard, color: T.text, border: `1px solid ${T.border}`, borderRadius: 4, padding: "2px 6px", fontSize: 10, fontFamily: T.font }}>{PROMPTER_FONTS.map((f, i) => <option key={i} value={i}>{f.name}</option>)}</select>
@@ -1178,13 +1178,13 @@ function IntcuApp() {
             </div>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
               <span style={{ fontSize: 8, color: T.textMuted, textTransform: "uppercase", letterSpacing: 2 }}>Translate</span>
-              <select value={targetLang} onChange={e => setTargetLang(e.target.value)} style={{ background: T.bgCard, color: T.text, border: `1px solid ${T.border}`, borderRadius: 4, padding: "2px 6px", fontSize: 10, fontFamily: T.font }}>
+              <select value={targetLang} onChange={e => setTargetLang(e.target.value)} title="Translate script or copilot responses" style={{ background: T.bgCard, color: T.text, border: `1px solid ${T.border}`, borderRadius: 4, padding: "2px 6px", fontSize: 10, fontFamily: T.font }}>
                 <option value="">Off</option>
                 {LANGUAGES.map(l => <option key={l} value={l}>{l}</option>)}
               </select>
             </div>
             {targetLang && <Btn onClick={async () => { if (!script.trim()) return; show("Translating..."); const t = await translateScript(script); setScript(t); show(`Translated to ${targetLang}`); }} bg={T.blue} style={{ fontSize: 10 }}>Translate Script</Btn>}
-            <Pill label="Captions" active={captions} onClick={() => setCaptions(!captions)} color={T.teal} />
+            <Pill label="Captions" active={captions} onClick={() => setCaptions(!captions)} color={T.teal} title="Live speech captions overlay" />
           </div>
         </div>}
 
@@ -1209,7 +1209,7 @@ function IntcuApp() {
           {camOn && <video ref={camVideoRef} muted playsInline style={{ position: "absolute", bottom: 60, right: 12, width: 120, height: 90, borderRadius: T.radius, border: `2px solid ${recording ? T.red : T.teal}`, objectFit: "cover", zIndex: 15 }} />}
           {/* Record button */}
           {!editing && <div style={{ position: "absolute", top: 8, right: 12, zIndex: 15, display: "flex", gap: 4 }}>
-            <Btn onClick={camOn ? stopCam : startCam} bg={recording ? T.red : T.bgCard} style={{ fontSize: 10, padding: "4px 10px" }}>
+            <Btn onClick={camOn ? stopCam : startCam} bg={recording ? T.red : T.bgCard} style={{ fontSize: 10, padding: "4px 10px" }} title="Record webcam">
               {recording ? "⏹ Stop Rec" : "⏺ Record"}
             </Btn>
           </div>}
@@ -1281,7 +1281,7 @@ function IntcuApp() {
 
           {/* Action bar */}
           {mfNotes.length > 0 && <div style={{ display: "flex", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
-            <Btn onClick={buildPrompt} disabled={mfSelected.size === 0 || mfPromptLoading} bg={T.teal} style={{ fontSize: 11 }}>
+            <Btn onClick={buildPrompt} disabled={mfSelected.size === 0 || mfPromptLoading} bg={T.teal} style={{ fontSize: 11 }} title="Combine selected notes into an LLM prompt">
               {mfPromptLoading ? "Building..." : `🔧 Build Prompt (${mfSelected.size})`}
             </Btn>
             <Btn onClick={notesToScript} style={{ fontSize: 11 }}>{mfSelected.size > 0 ? "→ Script" : "All → Script"}</Btn>
@@ -1322,8 +1322,8 @@ function IntcuApp() {
                   <div style={{ fontSize: 9, color: T.textMuted, marginTop: 4 }}>{fmtDate(note.created)}</div>
                 </div>
                 <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
-                  <Btn onClick={e => { e.stopPropagation(); brainstormNote(note); }} style={{ fontSize: 9, padding: "3px 8px" }}>💡</Btn>
-                  <Btn onClick={e => { e.stopPropagation(); deleteNote(note.id); }} style={{ fontSize: 9, padding: "3px 8px", color: T.red, background: "transparent", border: "none" }}>✕</Btn>
+                  <Btn onClick={e => { e.stopPropagation(); brainstormNote(note); }} style={{ fontSize: 9, padding: "3px 8px" }} title="AI brainstorm — expand this idea">💡</Btn>
+                  <Btn onClick={e => { e.stopPropagation(); deleteNote(note.id); }} style={{ fontSize: 9, padding: "3px 8px", color: T.red, background: "transparent", border: "none" }} title="Delete this note">✕</Btn>
                 </div>
               </div>
 
@@ -1416,11 +1416,11 @@ function IntcuApp() {
           </div>
           {/* Controls */}
           <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 12px", borderTop: `1px solid ${T.border}`, background: T.bgAlt, flexShrink: 0, flexWrap: "wrap" }}>
-            <Btn onClick={cpRespondNow} bg={T.blue}>⚡ Now</Btn>
-            <Btn onClick={runIntel} bg={T.cyan} style={{ fontSize: 10 }}>🧠 Intel</Btn>
+            <Btn onClick={cpRespondNow} bg={T.blue} title="Generate response immediately">⚡ Now</Btn>
+            <Btn onClick={runIntel} bg={T.cyan} style={{ fontSize: 10 }} title="Analyse meeting themes & leverage">🧠 Intel</Btn>
             <select value={cpStyle} onChange={e => setCpStyle(e.target.value)} style={{ ...iStyle, padding: "3px 6px", fontSize: 10, flex: "0 0 auto" }}>{COPILOT_STYLES.map(s => <option key={s.id} value={s.id}>{s.icon} {s.label}</option>)}</select>
-            <Btn onClick={() => exportDoc({ id: Date.now(), date: new Date().toISOString(), niche: (COPILOT_NICHES.find(n => n.id === cpNiche) || {}).label || "", style: cpStyle, context: cpCtx, exchanges: cpExchanges, fullTranscript: cpTranscript.filter(t => t.type === "final").map(t => t.text).join(" "), intel: cpIntel })} bg={T.bgCard} style={{ fontSize: 10 }}>📄</Btn>
-            <Btn onClick={stopCopilot} bg={T.red}>■ Stop</Btn>
+            <Btn onClick={() => exportDoc({ id: Date.now(), date: new Date().toISOString(), niche: (COPILOT_NICHES.find(n => n.id === cpNiche) || {}).label || "", style: cpStyle, context: cpCtx, exchanges: cpExchanges, fullTranscript: cpTranscript.filter(t => t.type === "final").map(t => t.text).join(" "), intel: cpIntel })} bg={T.bgCard} style={{ fontSize: 10 }} title="Export session as Word document">📄</Btn>
+            <Btn onClick={stopCopilot} bg={T.red} title="Stop copilot and save session">■ Stop</Btn>
           </div>
           {roomOn && <div style={{ display: "flex", gap: 6, padding: "5px 12px", borderTop: `1px solid ${T.border}`, background: T.bg, flexShrink: 0 }}>
             <span style={{ fontSize: 8, color: T.purple, fontWeight: 700, letterSpacing: 1, alignSelf: "center" }}>TEAM</span>
