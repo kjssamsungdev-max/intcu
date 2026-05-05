@@ -160,6 +160,10 @@ const estTime = (t) => { const m = Math.ceil(wc(t) / AVG_WPM); return m < 1 ? "<
 const fmtTime = (s) => { if (s < 0) s = 0; return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; };
 const genCode = () => { const c = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; let r = ""; for (let i = 0; i < 6; i++) r += c[Math.floor(Math.random() * c.length)]; return r; };
 const bounded = (arr, max) => (arr || []).slice(0, max);
+const syllabify = (word) => {
+  if (!word || word.length < 4) return word;
+  return word.replace(/([aeiouyAEIOUY]+)([^aeiouyAEIOUY])/g, "$1·$2");
+};
 const fmtDate = (d, style = DATE_SHORT) => { try { return new Date(d).toLocaleDateString("en-US", style); } catch { return ""; } };
 
 // P10-R7: Shared API fetch with fallback (DRY — used by callAI and genCpResponse)
@@ -427,6 +431,7 @@ function IntcuApp() {
   const [saveName, setSaveName] = useState("");
   const [ctrlOpen, setCtrlOpen] = useState(false);
   const [dyslexia, setDyslexia] = useState(false); // high-contrast, tinted bg, wider spacing
+  const [dyslexiaOverlay, setDyslexiaOverlay] = useState(() => localStorage.getItem("intcu-dys-overlay") || "cream");
   const [apiCooldown, setApiCooldown] = useState(false);
   const voiceRestarts = useRef(0);
   // ─── Translator ───
@@ -1382,6 +1387,12 @@ function IntcuApp() {
             <Knob label="Spacing" value={spacing} onChange={setSpacing} min={1.0} max={3.0} step={0.1} />
             <Knob label="Guide" value={guidePos} onChange={setGuidePos} min={15} max={50} step={5} unit="%" />
             <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>{[["Mirror", mirrored, () => setMirrored(!mirrored), T.red, "Flip text horizontally for glass rigs (M)"], ["Adapt", adaptive, () => setAdaptive(!adaptive), T.amber, "Adjust scroll speed per line density"], ["Focus", focus, () => setFocus(!focus), T.purple, "Highlight active line, dim others"], ["Voice", voiceOn, () => { if (voiceOn) { setVoiceOn(false); stopVoice(); } else setVoiceOn(true); }, T.blue, "Scroll follows your voice"], ["Cues", cues, () => setCues(!cues), T.amber, "Show [PAUSE] [SLOW] [BREATHE] markers"], ["Dyslexia", dyslexia, () => { setDyslexia(!dyslexia); if (!dyslexia) { setFontIdx(3); setSpacing(2.2); setFontSize(48); show("Dyslexia mode on — Lexend font, wider spacing"); } }, T.green, "Lexend font, tinted background, wider spacing"]].map(([l, a, fn, c, t]) => <Pill key={l} label={l} active={a} onClick={fn} color={c} title={t} />)}</div>
+            {dyslexia && <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+              <span style={{ fontSize: 8, color: T.textMuted, letterSpacing: 1 }}>TINT</span>
+              {[["cream", "#fdf6e3"], ["blue", "#e8f4f8"], ["green", "#e8f5e9"], ["pink", "#fce4ec"]].map(([id, c]) => (
+                <div key={id} onClick={() => { setDyslexiaOverlay(id); localStorage.setItem("intcu-dys-overlay", id); }} title={id} style={{ width: 18, height: 18, borderRadius: "50%", background: c, cursor: "pointer", border: dyslexiaOverlay === id ? `2px solid ${T.teal}` : "2px solid transparent", transition: "border 0.15s" }} />
+              ))}
+            </div>}
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
               <span style={{ fontSize: 8, color: T.textMuted, textTransform: "uppercase", letterSpacing: 2 }}>Font</span>
               <select value={fontIdx} onChange={e => setFontIdx(+e.target.value)} style={{ background: T.bgCard, color: T.text, border: `1px solid ${T.border}`, borderRadius: 4, padding: "2px 6px", fontSize: 10, fontFamily: T.font }}>{PROMPTER_FONTS.map((f, i) => <option key={i} value={i}>{f.name}</option>)}</select>
@@ -1409,7 +1420,7 @@ function IntcuApp() {
         </div>}
 
         {/* Viewport */}
-        <div style={{ flex: 1, position: "relative", overflow: "hidden", background: dyslexia ? "#1a1f14" : "transparent" }} onDoubleClick={() => setFs(!fs)}>
+        <div style={{ flex: 1, position: "relative", overflow: "hidden", background: dyslexia ? ({ cream: "#1f1c14", blue: "#141c1f", green: "#141f16", pink: "#1f1418" }[dyslexiaOverlay] || "#1a1f14") : "transparent" }} onDoubleClick={() => setFs(!fs)}>
           {fs && !editing && <div style={{ position: "absolute", top: 8, left: 0, right: 0, zIndex: 20, display: "flex", justifyContent: "center", gap: 12, alignItems: "center", opacity: 0.35 }}>
             <span style={{ fontSize: 13, fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>{fmtTime(elapsed)}</span>
             {pace && <span style={{ fontSize: 8, fontWeight: 700, color: pace.c }}>{pace.l}</span>}
@@ -1424,6 +1435,7 @@ function IntcuApp() {
               <div style={{ position: "absolute", left: 0, top: -3, width: 6, height: 8, background: T.teal, borderRadius: "0 2px 2px 0" }} />
               <div style={{ position: "absolute", right: 0, top: -3, width: 6, height: 8, background: T.teal, borderRadius: "2px 0 0 2px" }} />
             </div>
+            {dyslexia && <div style={{ position: "absolute", left: 0, right: 0, top: `calc(${guidePos}% - 60px)`, height: 120, background: "rgba(255,248,220,0.08)", zIndex: 9, pointerEvents: "none", borderTop: "1px solid rgba(255,248,220,0.06)", borderBottom: "1px solid rgba(255,248,220,0.06)" }} />}
           </>}
           {/* Camera PIP */}
           {camOn && <video ref={camVideoRef} muted playsInline style={{ position: "absolute", bottom: 60, right: 12, width: 120, height: 90, borderRadius: T.radius, border: `2px solid ${recording ? T.red : T.teal}`, objectFit: "cover", zIndex: 15 }} />}
@@ -1485,11 +1497,12 @@ function IntcuApp() {
                   if (/^\s+$/.test(w)) return <span key={wi}>{w}</span>;
                   const idx = wordIdx++;
                   const color = idx === activeWord ? T.teal : (idx < activeWord ? (dyslexia ? "#f5f0e0" : T.text) : T.textDim);
-                  const fw = idx === activeWord ? 700 : 400;
-                  return <span key={wi} style={{ color, fontWeight: fw, transition: "color 0.1s" }}>{w}</span>;
+                  const fw = idx === activeWord ? 700 : (dyslexia ? 500 : 400);
+                  const display = idx === activeWord && dyslexia ? syllabify(w) : w;
+                  return <span key={wi} style={{ color, fontWeight: fw, transition: "color 0.1s" }}>{display}</span>;
                 });
               })();
-              return <div key={i} ref={el => lineRefs.current[i] = el} style={{ fontSize, fontFamily: PROMPTER_FONTS[fontIdx].css, lineHeight: spacing, color: dyslexia ? "#f5f0e0" : T.text, whiteSpace: "pre-wrap", wordBreak: "break-word", textAlign: dyslexia ? "left" : "center", fontWeight: isActive ? 600 : (i === activeLine && focus ? 600 : 400), opacity: op, transition: "opacity 0.4s, font-weight 0.3s", minHeight: line.trim() === "" ? fontSize * EMPTY_LINE_SCALE : "auto", letterSpacing: dyslexia ? "0.05em" : "normal", wordSpacing: dyslexia ? "0.15em" : "normal" }}>{lineContent}</div>;
+              return <div key={i} ref={el => lineRefs.current[i] = el} style={{ fontSize, fontFamily: PROMPTER_FONTS[fontIdx].css, lineHeight: spacing, color: dyslexia ? "#f5f0e0" : T.text, whiteSpace: "pre-wrap", wordBreak: "break-word", textAlign: dyslexia ? "left" : "center", fontWeight: isActive ? (dyslexia ? 700 : 600) : (i === activeLine && focus ? (dyslexia ? 700 : 600) : (dyslexia ? 500 : 400)), opacity: op, transition: "opacity 0.4s, font-weight 0.3s", minHeight: line.trim() === "" ? fontSize * EMPTY_LINE_SCALE : "auto", letterSpacing: dyslexia ? "0.05em" : "normal", wordSpacing: dyslexia ? "0.15em" : "normal" }}>{lineContent}</div>;
             })}
           </div>}
         </div>
