@@ -259,6 +259,10 @@ function IntcuApp() {
   const [toast, setToast] = useState("");
   const show = (m) => setToast(m);
 
+  // ─── Welcome Dashboard ───
+  const [showWelcome, setShowWelcome] = useState(true);
+  const [motd, setMotd] = useState(null);
+
   // ─── Script state ───
   const [script, setScript] = useState(`Welcome to Intcu — The Intelligent Cue.\n\nSpeak smarter. Respond instantly.\n\n[PAUSE]\n\nSwitch to Writer to generate scripts with AI. Switch to Copilot for live conversation intelligence.\n\n[BREATHE]\n\nUse cue markers: [PAUSE], [SLOW], [BREATHE] on their own line.\nWrap words in [EMPHASIS]like this[/EMPHASIS] for highlights.\n\nKeyboard: Space play/pause · ↑↓ speed · R reset · E edit · M mirror\n\n[PAUSE]\n\nNever miss a perfect line again.`);
   const [playing, setPlaying] = useState(false);
@@ -419,6 +423,34 @@ function IntcuApp() {
       if (sess) setCpSessions(bounded(sess, MAX_SESSIONS));
     })();
   }, []);
+
+  // ─── Welcome MOTD fetch ───
+  const DEFAULT_SCRIPT = `Welcome to Intcu — The Intelligent Cue.\n\nSpeak smarter. Respond instantly.\n\n[PAUSE]\n\nSwitch to Writer to generate scripts with AI. Switch to Copilot for live conversation intelligence.\n\n[BREATHE]\n\nUse cue markers: [PAUSE], [SLOW], [BREATHE] on their own line.\nWrap words in [EMPHASIS]like this[/EMPHASIS] for highlights.\n\nKeyboard: Space play/pause · ↑↓ speed · R reset · E edit · M mirror\n\n[PAUSE]\n\nNever miss a perfect line again.`;
+  const isDefaultScript = script === DEFAULT_SCRIPT;
+
+  useEffect(() => {
+    if (!showWelcome) return;
+    const today = new Date().toDateString();
+    const cached = localStorage.getItem("intcu-motd");
+    if (cached) {
+      try { const d = JSON.parse(cached); if (d.date === today) { setMotd(d); return; } } catch {}
+    }
+    (async () => {
+      const result = await callAI(
+        "You are a motivational quote curator and vocabulary teacher. Return exactly ONE powerful, verified motivational quote for today. Also include a sophisticated English vocabulary word of the day with its definition and an example sentence. Output ONLY valid JSON: {\"quote\":\"text\",\"author\":\"Name\",\"word\":\"the word\",\"definition\":\"meaning\",\"example\":\"example sentence using the word\"}. No markdown, no code fences.",
+        "Give me today's motivational quote and word of the day.", 500, aiEngine
+      );
+      if (result) {
+        try {
+          const clean = result.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+          const parsed = JSON.parse(clean);
+          const data = { ...parsed, date: today };
+          localStorage.setItem("intcu-motd", JSON.stringify(data));
+          setMotd(data);
+        } catch { /* fallback used */ }
+      }
+    })();
+  }, [showWelcome]);
 
   // ─── Script storage ───
   const saveScripts = async (list) => { const b = bounded(list, MAX_SCRIPTS); setScripts(b); await sSet("pp-scripts", b); };
@@ -1016,7 +1048,7 @@ function IntcuApp() {
       {/* ─── Mode tabs ─── */}
       {!fs && <nav role="navigation" aria-label="Mode tabs" style={{ display: "flex", borderBottom: `1px solid ${T.border}`, background: T.bg, flexShrink: 0 }}>
         {[["script", "📝 Script"], ["writer", "✨ Writer"], ["myfile", "📋 MyFile"], ["copilot", "🎙️ Copilot"]].map(([id, label]) => (
-          <button key={id} role="tab" aria-selected={mode === id} aria-label={`${label} mode`} onClick={() => { if (playing) { setPlaying(false); stopVoice(); } if (cpActive) stopCopilot(); setMode(id); }}
+          <button key={id} role="tab" aria-selected={mode === id} aria-label={`${label} mode`} onClick={() => { if (playing) { setPlaying(false); stopVoice(); } if (cpActive) stopCopilot(); setMode(id); setShowWelcome(false); }}
             style={{ flex: 1, padding: "8px 0", background: mode === id ? T.bgAlt : "transparent", border: "none", borderBottom: mode === id ? `2px solid ${T.teal}` : "2px solid transparent", color: mode === id ? T.text : T.textDim, fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: T.font, transition: "all 0.15s" }}>{label}</button>
         ))}
       </nav>}
@@ -1218,8 +1250,29 @@ function IntcuApp() {
             <span style={{ background: "rgba(0,0,0,0.75)", color: "#fff", padding: "4px 14px", borderRadius: 4, fontSize: 14, fontFamily: T.font, fontWeight: 500, lineHeight: 1.6 }}>{captionText}</span>
           </div>}
           {editing ? <div style={{ width: "100%", height: "100%", position: "relative" }} onDragOver={e => e.preventDefault()} onDrop={handleFileDrop}>
-            <textarea value={script} onChange={e => setScript(e.target.value)} placeholder="Paste script here or drop a .txt / .docx file..." style={{ width: "100%", height: "100%", resize: "none", background: "transparent", color: T.text, border: "none", outline: "none", padding: `20px ${margin}%`, fontSize: Math.min(fontSize, EDIT_FONT_CAP), fontFamily: PROMPTER_FONTS[fontIdx].css, lineHeight: 1.8, boxSizing: "border-box" }} />
+            <textarea value={script} onChange={e => { setScript(e.target.value); setShowWelcome(false); }} placeholder="Paste script here or drop a .txt / .docx file..." style={{ width: "100%", height: "100%", resize: "none", background: "transparent", color: T.text, border: "none", outline: "none", padding: `20px ${margin}%`, fontSize: Math.min(fontSize, EDIT_FONT_CAP), fontFamily: PROMPTER_FONTS[fontIdx].css, lineHeight: 1.8, boxSizing: "border-box" }} />
             <button onClick={() => fileRef.current?.click()} style={{ position: "absolute", bottom: 12, right: 12, padding: "6px 14px", borderRadius: T.radius, background: T.bgCard, color: T.textDim, border: `1px solid ${T.border}`, cursor: "pointer", fontSize: 11, fontFamily: T.font, fontWeight: 600 }}>📁 Import file</button>
+            {showWelcome && isDefaultScript && mode === "script" && (() => {
+              const h = new Date().getHours();
+              const greeting = h < 12 ? "morning" : h < 17 ? "afternoon" : "evening";
+              const q = motd || { quote: "The secret of getting ahead is getting started.", author: "Mark Twain", word: "Eloquence", definition: "The art of fluent, forceful, and persuasive speaking.", example: "Her eloquence captivated the entire audience from the first sentence." };
+              return <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 20, pointerEvents: "none" }}>
+                <div style={{ background: T.bgCard, border: `1px solid ${T.borderLit}`, borderRadius: 12, padding: "28px 32px", maxWidth: 420, width: "88%", boxShadow: "0 12px 48px rgba(0,0,0,0.25)", pointerEvents: "auto" }}>
+                  <div style={{ fontSize: 16, fontWeight: 700, fontFamily: T.font, color: T.text, marginBottom: 16 }}>Good {greeting}, welcome to Intcu.</div>
+                  <div style={{ borderLeft: `3px solid ${T.teal}`, paddingLeft: 12, marginBottom: 16 }}>
+                    <div style={{ fontSize: 14, fontStyle: "italic", lineHeight: 1.6, color: T.text, fontFamily: "'Source Serif 4', serif", marginBottom: 4 }}>"{q.quote}"</div>
+                    <div style={{ fontSize: 11, color: T.textDim, fontFamily: T.font }}>— {q.author}</div>
+                  </div>
+                  <div style={{ background: T.bg, border: `1px solid ${T.border}`, borderRadius: 8, padding: "10px 14px", marginBottom: 18 }}>
+                    <div style={{ fontSize: 11, color: T.teal, fontWeight: 700, letterSpacing: 1, marginBottom: 4 }}>WORD OF THE DAY</div>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: T.teal, marginBottom: 2 }}>{q.word}</div>
+                    <div style={{ fontSize: 12, color: T.text, lineHeight: 1.5, marginBottom: 4 }}>{q.definition}</div>
+                    <div style={{ fontSize: 11, color: T.textDim, fontStyle: "italic", lineHeight: 1.5 }}>"{q.example}"</div>
+                  </div>
+                  <button onClick={() => setShowWelcome(false)} style={{ width: "100%", padding: "10px 0", borderRadius: T.radius, background: T.teal, color: "#fff", border: "none", fontSize: 13, fontWeight: 700, fontFamily: T.font, cursor: "pointer", letterSpacing: 0.5 }}>Start Writing</button>
+                </div>
+              </div>;
+            })()}
           </div>
           : <div ref={scrollRef} style={{ width: "100%", height: "100%", overflowY: "auto", padding: `40vh ${margin}% 60vh`, boxSizing: "border-box", transform: mirrored ? "scaleX(-1)" : "none", scrollbarWidth: "none" }}
               onScroll={() => { if (scrollRef.current) { const mx = scrollRef.current.scrollHeight - scrollRef.current.clientHeight; if (mx > 0) setProgress((scrollRef.current.scrollTop / mx) * 100); } }}>
