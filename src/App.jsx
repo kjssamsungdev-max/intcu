@@ -1144,7 +1144,7 @@ function IntcuApp() {
           <Btn onClick={doReset}>⟲</Btn>
           <Btn onClick={doEdit}>✎</Btn>
           <Btn onClick={() => setShowLib(true)}>📁</Btn>
-          <Btn onClick={() => setShowQuotes(true)} label="Quote finder">💬</Btn>
+          <Btn onClick={() => setShowQuotes(true)} label="Quote finder" style={{ minHeight: 40 }}>💬</Btn>
           <Btn onClick={() => setFs(!fs)}>{fs ? "⊡" : "⊞"}</Btn>
           {playing && !counting && <>
             <span style={{ fontVariantNumeric: "tabular-nums", fontSize: 12, fontWeight: 600, color: T.textDim, marginLeft: 4 }}>{fmtTime(elapsed)}</span>
@@ -1243,7 +1243,10 @@ function IntcuApp() {
         </div>
         <input value={wAud} onChange={e => setWAud(e.target.value)} placeholder="Audience (optional)" style={{ ...iStyle, width: "100%", marginBottom: 8 }} />
         <textarea value={wCtx} onChange={e => setWCtx(e.target.value)} placeholder="Key points, context (optional)" rows={2} style={{ ...iStyle, width: "100%", marginBottom: 10 }} />
-        <Btn onClick={generate} disabled={wLoading || !wTopic.trim()} bg={T.teal} style={{ width: "100%", padding: "12px", fontSize: 14, textAlign: "center" }}>{wLoading ? "✨ Generating..." : "✨ Generate Script"}</Btn>
+        <div style={{ display: "flex", gap: 8 }}>
+          <Btn onClick={generate} disabled={wLoading || !wTopic.trim()} bg={T.teal} style={{ flex: 1, padding: "12px", fontSize: 14, textAlign: "center" }}>{wLoading ? "✨ Generating..." : "✨ Generate Script"}</Btn>
+          <Btn onClick={() => setShowQuotes(true)} style={{ padding: "12px 16px", fontSize: 14 }}>💬 Quotes</Btn>
+        </div>
 
         {wResult && <div style={{ marginTop: 14 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
