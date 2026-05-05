@@ -1144,7 +1144,7 @@ function IntcuApp() {
           <Btn onClick={doReset}>⟲</Btn>
           <Btn onClick={doEdit}>✎</Btn>
           <Btn onClick={() => setShowLib(true)}>📁</Btn>
-          <Btn onClick={() => setShowQuotes(true)} label="Quote finder" style={{ minHeight: 40 }}>💬</Btn>
+          <Btn onClick={() => setShowQuotes(true)} label="Quote finder" title="Quote finder" style={{ minHeight: 40, fontSize: 16 }}>💬</Btn>
           <Btn onClick={() => setFs(!fs)}>{fs ? "⊡" : "⊞"}</Btn>
           {playing && !counting && <>
             <span style={{ fontVariantNumeric: "tabular-nums", fontSize: 12, fontWeight: 600, color: T.textDim, marginLeft: 4 }}>{fmtTime(elapsed)}</span>
