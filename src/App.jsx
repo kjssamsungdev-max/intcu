@@ -252,6 +252,63 @@ const Toast = ({ msg, onDone }) => {
 // MAIN APPLICATION
 // ═══════════════════════════════════════════════
 function IntcuApp() {
+  // ─── Auth state ───
+  const [loggedIn, setLoggedIn] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [showLogin, setShowLogin] = useState(true);
+  const [loginEmail, setLoginEmail] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
+  const [loginError, setLoginError] = useState("");
+  const [isRegistering, setIsRegistering] = useState(false);
+  const [registerName, setRegisterName] = useState("");
+
+  // ─── Auth persistence ───
+  useEffect(() => {
+    // Seed default admin
+    const stored = localStorage.getItem("intcu-users");
+    if (!stored) {
+      const defaultAdmin = [{ email: "admin", password: btoa("123456"), name: "Administrator", role: "admin", created: new Date().toISOString() }];
+      localStorage.setItem("intcu-users", JSON.stringify(defaultAdmin));
+    }
+    // Check session
+    const session = localStorage.getItem("intcu-user");
+    if (session) {
+      try { const u = JSON.parse(session); setCurrentUser(u); setLoggedIn(true); setShowLogin(false); } catch {}
+    }
+  }, []);
+
+  const getUsers = () => { try { return JSON.parse(localStorage.getItem("intcu-users")) || []; } catch { return []; } };
+
+  const handleLogin = () => {
+    setLoginError("");
+    if (!loginEmail.trim() || !loginPassword) { setLoginError("Enter email and password"); return; }
+    const users = getUsers();
+    const found = users.find(u => u.email === loginEmail.trim() && u.password === btoa(loginPassword));
+    if (found) {
+      setCurrentUser(found); setLoggedIn(true); setShowLogin(false);
+      localStorage.setItem("intcu-user", JSON.stringify(found));
+    } else { setLoginError("Invalid email or password"); }
+  };
+
+  const handleRegister = () => {
+    setLoginError("");
+    if (!registerName.trim() || !loginEmail.trim() || !loginPassword) { setLoginError("All fields required"); return; }
+    if (loginPassword.length < 4) { setLoginError("Password must be at least 4 characters"); return; }
+    const users = getUsers();
+    if (users.find(u => u.email === loginEmail.trim())) { setLoginError("Email already registered"); return; }
+    const newUser = { email: loginEmail.trim(), password: btoa(loginPassword), name: registerName.trim(), role: "user", created: new Date().toISOString() };
+    users.push(newUser);
+    localStorage.setItem("intcu-users", JSON.stringify(users));
+    setCurrentUser(newUser); setLoggedIn(true); setShowLogin(false);
+    localStorage.setItem("intcu-user", JSON.stringify(newUser));
+  };
+
+  const logout = () => {
+    setLoggedIn(false); setCurrentUser(null); setShowLogin(true);
+    localStorage.removeItem("intcu-user");
+    setLoginEmail(""); setLoginPassword(""); setRegisterName(""); setLoginError("");
+  };
+
   // ─── Mode ───
   const [mode, setMode] = useState("script");
   const [darkMode, setDarkMode] = useState(false);
@@ -1026,6 +1083,30 @@ function IntcuApp() {
   // ═══════════════════════════════════════════════
   const orientStyle = orientation === "landscape" ? { transform: "rotate(90deg)", transformOrigin: "center", width: "100vh", height: "100vw", position: "fixed", top: "50%", left: "50%", marginTop: "-50vw", marginLeft: "-50vh" } : orientation === "portrait" ? { maxWidth: 480, margin: "0 auto" } : {};
 
+  // ─── Login Page ───
+  if (!loggedIn || showLogin) return (
+    <div style={{ width: "100%", height: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: T.bg, fontFamily: T.font }}>
+      <div style={{ width: "88%", maxWidth: 400 }}>
+        <div style={{ textAlign: "center", marginBottom: 28 }}>
+          <div style={{ fontSize: 28, fontWeight: 700, letterSpacing: 3, marginBottom: 4 }}>INT<span style={{ color: T.teal }}>CU</span></div>
+          <div style={{ fontSize: 12, color: T.textDim, letterSpacing: 1 }}>The Intelligent Cue</div>
+        </div>
+        <div style={{ background: T.bgCard, border: `1px solid ${T.borderLit}`, borderRadius: 12, padding: "28px 24px", boxShadow: "0 8px 32px rgba(0,0,0,0.15)" }}>
+          <div style={{ display: "flex", marginBottom: 20, borderBottom: `1px solid ${T.border}` }}>
+            <button onClick={() => { setIsRegistering(false); setLoginError(""); }} style={{ flex: 1, padding: "10px 0", background: "transparent", border: "none", borderBottom: !isRegistering ? `2px solid ${T.teal}` : "2px solid transparent", color: !isRegistering ? T.text : T.textDim, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: T.font }}>Sign In</button>
+            <button onClick={() => { setIsRegistering(true); setLoginError(""); }} style={{ flex: 1, padding: "10px 0", background: "transparent", border: "none", borderBottom: isRegistering ? `2px solid ${T.teal}` : "2px solid transparent", color: isRegistering ? T.text : T.textDim, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: T.font }}>Register</button>
+          </div>
+          {isRegistering && <input value={registerName} onChange={e => setRegisterName(e.target.value)} placeholder="Full name" style={{ width: "100%", height: 48, background: T.bgCard, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: "0 14px", color: T.text, fontSize: 14, fontFamily: T.font, marginBottom: 10, boxSizing: "border-box", outline: "none" }} />}
+          <input value={loginEmail} onChange={e => setLoginEmail(e.target.value)} placeholder="Email or username" onKeyDown={e => { if (e.key === "Enter" && !isRegistering) handleLogin(); }} style={{ width: "100%", height: 48, background: T.bgCard, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: "0 14px", color: T.text, fontSize: 14, fontFamily: T.font, marginBottom: 10, boxSizing: "border-box", outline: "none" }} />
+          <input value={loginPassword} onChange={e => setLoginPassword(e.target.value)} placeholder="Password" type="password" onKeyDown={e => { if (e.key === "Enter") isRegistering ? handleRegister() : handleLogin(); }} style={{ width: "100%", height: 48, background: T.bgCard, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: "0 14px", color: T.text, fontSize: 14, fontFamily: T.font, marginBottom: 16, boxSizing: "border-box", outline: "none" }} />
+          <button onClick={isRegistering ? handleRegister : handleLogin} style={{ width: "100%", height: 48, background: T.teal, color: "#fff", border: "none", borderRadius: T.radius, fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: T.font, letterSpacing: 0.5 }}>{isRegistering ? "Create Account" : "Sign In"}</button>
+          {loginError && <div style={{ marginTop: 10, fontSize: 12, color: T.red, textAlign: "center" }}>{loginError}</div>}
+        </div>
+        <div style={{ textAlign: "center", marginTop: 20, fontSize: 10, color: T.textMuted }}>intcu.com — Speak smarter. Respond instantly.</div>
+      </div>
+    </div>
+  );
+
   return (
     <div style={{ width: "100%", height: "100vh", display: "flex", flexDirection: "column", background: T.bg, color: T.text, overflow: "hidden", position: "relative", fontFamily: T.font, ...orientStyle }}>
 
@@ -1040,6 +1121,9 @@ function IntcuApp() {
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
           {mode === "script" && <span style={{ fontSize: 9, color: T.textMuted }}>{words}w · {readTime}</span>}
+          {currentUser && <span style={{ fontSize: 9, color: T.textDim, maxWidth: 80, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{currentUser.name || currentUser.email}</span>}
+          {currentUser?.role === "admin" && <span style={{ fontSize: 7, color: T.teal, fontWeight: 700, letterSpacing: 1, background: `rgba(0,212,200,0.1)`, padding: "1px 4px", borderRadius: 3 }}>ADMIN</span>}
+          <Btn onClick={logout} style={{ fontSize: 9, padding: "3px 8px" }} title="Sign out">↪</Btn>
           <button onClick={() => setDarkMode(!darkMode)} title="Switch light / dark mode" style={{ width: 36, height: 36, borderRadius: 8, background: darkMode ? T.bgCard : T.border, border: "1px solid " + T.borderLit, cursor: "pointer", fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center" }}>{darkMode ? "☀️" : "🌙"}</button>
           <Btn onClick={() => setShowSync(true)} bg={roomOn ? T.purple : T.bgCard} style={{ fontSize: 10, padding: "4px 10px" }} title="Multi-screen sync & team rooms">{roomOn ? `📡 ${members.length}` : "📡"}</Btn>
         </div>
