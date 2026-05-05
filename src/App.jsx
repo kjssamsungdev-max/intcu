@@ -680,12 +680,15 @@ function IntcuApp() {
 
   const animateFnRef = useRef(null);
   const animate = useCallback((ts) => {
-    if (!lastT.current) lastT.current = ts;
-    const dt = ts - lastT.current; lastT.current = ts;
+    if (!lastT.current) { lastT.current = ts; animRef.current = requestAnimationFrame((t) => { if (animateFnRef.current) animateFnRef.current(t); }); return; }
+    const rawDt = ts - lastT.current; lastT.current = ts;
+    const dt = Math.min(Math.max(rawDt, 0), 100);
     if (!scrollRef.current) return;
     const el = scrollRef.current;
-    const m = lineMults[getActive()] || 1;
-    el.scrollTop += (speedRef.current * 60 * dt * m) / 1000;
+    const mult = Math.max(lineMults[getActive()] || 1, 0.1);
+    let px = (speedRef.current * 60 * dt * mult) / 1000;
+    if (isNaN(px) || px <= 0) px = speedRef.current * 0.5;
+    el.scrollTop += px;
     const mx = el.scrollHeight - el.clientHeight;
     if (mx > 0) setProgress(Math.min((el.scrollTop / mx) * 100, 100));
     if (mx > 0 && el.scrollTop >= mx) { setPlaying(false); return; }
