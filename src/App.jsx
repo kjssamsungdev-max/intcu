@@ -357,6 +357,36 @@ function IntcuApp() {
     return true;
   };
 
+  // ─── TTS ───
+  const [ttsPlaying, setTtsPlaying] = useState(false);
+
+  const startTTS = () => {
+    if (!script.trim()) return;
+    window.speechSynthesis.cancel();
+    const utt = new SpeechSynthesisUtterance(script.replace(/\[(PAUSE|BREATHE|SLOW|EMPHASIS|\/EMPHASIS)\]/gi, ""));
+    utt.rate = 0.9; utt.pitch = 1;
+    utt.onstart = () => setTtsPlaying(true);
+    utt.onend = () => setTtsPlaying(false);
+    utt.onerror = () => setTtsPlaying(false);
+    window.speechSynthesis.speak(utt);
+  };
+
+  const stopTTS = () => { window.speechSynthesis.cancel(); setTtsPlaying(false); };
+
+  // ─── PDF Export ───
+  const exportPDF = (text, title = "Intcu Script") => {
+    if (!text) return;
+    const words = wc(text);
+    const time = estTime(text);
+    const date = new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title}</title><style>@page{size:letter;margin:1in}body{font-family:Georgia,'Times New Roman',serif;font-size:14px;line-height:1.8;color:#1a1a1a;max-width:6.5in;margin:0 auto;padding:0}h1{font-family:-apple-system,sans-serif;font-size:22px;font-weight:700;margin:0 0 4px;color:#009e95}p.meta{font-size:11px;color:#666;margin:0 0 24px;border-bottom:1px solid #ddd;padding-bottom:12px}.content{white-space:pre-wrap;margin-bottom:32px}.footer{border-top:1px solid #ddd;padding-top:12px;font-size:10px;color:#999;text-align:center}p.stats{font-size:11px;color:#888;margin:20px 0 8px}</style></head><body><h1>${title}</h1><p class="meta">${date}</p><div class="content">${text.replace(/</g,"&lt;").replace(/>/g,"&gt;")}</div><p class="stats">${words} words · ${time} read time</p><div class="footer">intcu.com — The Intelligent Cue</div><script>window.onload=()=>{window.print();}<\/script></body></html>`;
+    const blob = new Blob([html], { type: "text/html" });
+    const url = URL.createObjectURL(blob);
+    const win = window.open(url, "_blank");
+    if (!win) { show("Allow popups to export PDF"); }
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+  };
+
   // ─── Mode ───
   const [mode, setMode] = useState("script");
   const [darkMode, setDarkMode] = useState(false);
@@ -1276,6 +1306,7 @@ function IntcuApp() {
               {scripts.length === 0 && <p style={{ padding: 20, textAlign: "center", color: T.textMuted, fontSize: 12 }}>No saved scripts</p>}
               {bounded(scripts, MAX_SCRIPTS).map(s => <div key={s.id} style={{ display: "flex", alignItems: "center", padding: "8px 16px", borderBottom: `1px solid ${T.border}`, cursor: "pointer" }} onClick={() => { setScript(s.text); setShowLib(false); setEditing(true); }}>
                 <div style={{ flex: 1 }}><div style={{ fontSize: 12, fontWeight: 600 }}>{s.name}</div><div style={{ fontSize: 9, color: T.textMuted }}>{wc(s.text)}w · {estTime(s.text)}</div></div>
+                <Btn onClick={e => { e.stopPropagation(); exportPDF(s.text, s.name); }} style={{ background: "transparent", border: "none", color: T.blue, fontSize: 10 }} title="Export as PDF">📄</Btn>
                 <Btn onClick={e => { e.stopPropagation(); saveScripts(scripts.filter(x => x.id !== s.id)); }} style={{ background: "transparent", border: "none", color: T.red, fontSize: 14 }}>✕</Btn>
               </div>)}
             </div>
@@ -1385,6 +1416,9 @@ function IntcuApp() {
             <Btn onClick={camOn ? stopCam : startCam} bg={recording ? T.red : T.bgCard} style={{ fontSize: 10, padding: "4px 10px" }} title="Record webcam">
               {recording ? "⏹ Stop Rec" : "⏺ Record"}
             </Btn>
+            <Btn onClick={ttsPlaying ? stopTTS : startTTS} bg={ttsPlaying ? T.red : T.bgCard} style={{ fontSize: 10, padding: "4px 10px" }} title={ttsPlaying ? "Stop reading" : "Read script aloud"}>
+              {ttsPlaying ? "🔇" : "🔊"}
+            </Btn>
           </div>}
           {/* Live caption overlay */}
           {captions && captionText && !editing && <div style={{ position: "absolute", bottom: camOn ? 160 : 40, left: "10%", right: "10%", zIndex: 15, pointerEvents: "none", textAlign: "center" }}>
@@ -1392,7 +1426,10 @@ function IntcuApp() {
           </div>}
           {editing ? <div style={{ width: "100%", height: "100%", position: "relative" }} onDragOver={e => e.preventDefault()} onDrop={handleFileDrop}>
             <textarea value={script} onChange={e => { setScript(e.target.value); setShowWelcome(false); }} placeholder="Paste script here or drop a .txt / .docx file..." style={{ width: "100%", height: "100%", resize: "none", background: "transparent", color: T.text, border: "none", outline: "none", padding: `20px ${margin}%`, fontSize: Math.min(fontSize, EDIT_FONT_CAP), fontFamily: PROMPTER_FONTS[fontIdx].css, lineHeight: 1.8, boxSizing: "border-box" }} />
-            <button onClick={() => fileRef.current?.click()} style={{ position: "absolute", bottom: 12, right: 12, padding: "6px 14px", borderRadius: T.radius, background: T.bgCard, color: T.textDim, border: `1px solid ${T.border}`, cursor: "pointer", fontSize: 11, fontFamily: T.font, fontWeight: 600 }}>📁 Import file</button>
+            <div style={{ position: "absolute", bottom: 12, right: 12, display: "flex", gap: 6 }}>
+              <button onClick={() => exportPDF(script)} title="Export as PDF" style={{ padding: "6px 14px", borderRadius: T.radius, background: T.bgCard, color: T.textDim, border: `1px solid ${T.border}`, cursor: "pointer", fontSize: 11, fontFamily: T.font, fontWeight: 600 }}>📄 PDF</button>
+              <button onClick={() => fileRef.current?.click()} style={{ padding: "6px 14px", borderRadius: T.radius, background: T.bgCard, color: T.textDim, border: `1px solid ${T.border}`, cursor: "pointer", fontSize: 11, fontFamily: T.font, fontWeight: 600 }}>📁 Import file</button>
+            </div>
             {showWelcome && isDefaultScript && mode === "script" && (() => {
               const h = new Date().getHours();
               const greeting = h < 12 ? "morning" : h < 17 ? "afternoon" : "evening";
@@ -1545,7 +1582,8 @@ function IntcuApp() {
         {cpViewSession ? <div style={{ flex: 1, overflowY: "auto", padding: 16 }}>
           <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12 }}>
             <Btn onClick={() => setCpViewSession(null)}>← Back</Btn>
-            <Btn onClick={() => exportDoc(cpViewSession)} bg={T.blue}>📄 Export</Btn>
+            <Btn onClick={() => exportDoc(cpViewSession)} bg={T.blue}>📄 Doc</Btn>
+            <Btn onClick={() => { const t = (cpViewSession.exchanges || []).map((e, i) => `Exchange ${i+1}:\nHeard: ${e.heard}\nResponse: ${e.response}`).join("\n\n"); exportPDF(t || cpViewSession.fullTranscript || "Empty session", "Copilot Session"); }} bg={T.bgCard}>📄 PDF</Btn>
           </div>
           <div style={{ fontFamily: T.font, fontSize: 16, fontWeight: 700, marginBottom: 6 }}>Session Review</div>
           <div style={{ fontSize: 10, color: T.textDim, marginBottom: 12 }}>{fmtDate(cpViewSession.date)} · {cpViewSession.niche} · {cpViewSession.style}</div>
@@ -1613,7 +1651,8 @@ function IntcuApp() {
             <Btn onClick={cpRespondNow} bg={T.blue} title="Generate response immediately">⚡ Now</Btn>
             <Btn onClick={runIntel} bg={T.cyan} style={{ fontSize: 10 }} title="Analyse meeting themes & leverage">🧠 Intel</Btn>
             <select value={cpStyle} onChange={e => setCpStyle(e.target.value)} style={{ ...iStyle, padding: "3px 6px", fontSize: 10, flex: "0 0 auto" }}>{COPILOT_STYLES.map(s => <option key={s.id} value={s.id}>{s.icon} {s.label}</option>)}</select>
-            <Btn onClick={() => exportDoc({ id: Date.now(), date: new Date().toISOString(), niche: (COPILOT_NICHES.find(n => n.id === cpNiche) || {}).label || "", style: cpStyle, context: cpCtx, exchanges: cpExchanges, fullTranscript: cpTranscript.filter(t => t.type === "final").map(t => t.text).join(" "), intel: cpIntel })} bg={T.bgCard} style={{ fontSize: 10 }} title="Export session as Word document">📄</Btn>
+            <Btn onClick={() => exportDoc({ id: Date.now(), date: new Date().toISOString(), niche: (COPILOT_NICHES.find(n => n.id === cpNiche) || {}).label || "", style: cpStyle, context: cpCtx, exchanges: cpExchanges, fullTranscript: cpTranscript.filter(t => t.type === "final").map(t => t.text).join(" "), intel: cpIntel })} bg={T.bgCard} style={{ fontSize: 10 }} title="Export session as Word document">📄 Doc</Btn>
+            <Btn onClick={() => { const t = cpExchanges.map((e, i) => `Exchange ${i+1}:\nHeard: ${e.heard}\nResponse: ${e.response}`).join("\n\n"); exportPDF(t || "No exchanges yet", "Copilot Session"); }} bg={T.bgCard} style={{ fontSize: 10 }} title="Export session as PDF">📄 PDF</Btn>
             <Btn onClick={stopCopilot} bg={T.red} title="Stop copilot and save session">■ Stop</Btn>
           </div>
           {roomOn && <div style={{ display: "flex", gap: 6, padding: "5px 12px", borderTop: `1px solid ${T.border}`, background: T.bg, flexShrink: 0 }}>
