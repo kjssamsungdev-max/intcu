@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      width: 300px; height: 400px;
+      font-family: 'Segoe UI', sans-serif;
+      background: #09090b; color: #f4f4f5;
+      padding: 16px; display: flex; flex-direction: column;
+    }
+    .header { text-align: center; margin-bottom: 16px; }
+    .logo { font-size: 22px; font-weight: 700; letter-spacing: 3px; }
+    .logo .teal { color: #00D4C8; }
+    .tagline { font-size: 10px; color: #a1a1aa; letter-spacing: 1px; margin-top: 2px; }
+    .user-info { font-size: 10px; color: #a1a1aa; text-align: center; margin-bottom: 12px; padding: 6px; background: #1c1c21; border-radius: 6px; }
+    .user-info .plan { color: #00D4C8; font-weight: 700; text-transform: uppercase; }
+    .actions { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+    .btn {
+      width: 100%; padding: 12px; border: none; border-radius: 8px;
+      font-size: 13px; font-weight: 600; cursor: pointer; transition: opacity 0.15s;
+    }
+    .btn:hover { opacity: 0.85; }
+    .btn-teal { background: #00D4C8; color: #09090b; }
+    .btn-dark { background: #1c1c21; color: #f4f4f5; border: 1px solid #2a2a30; }
+    .script-area { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+    .script-label { font-size: 9px; color: #a1a1aa; text-transform: uppercase; letter-spacing: 2px; }
+    .script-text {
+      flex: 1; width: 100%; background: #1c1c21; border: 1px solid #2a2a30;
+      border-radius: 6px; padding: 10px; color: #f4f4f5; font-size: 12px;
+      line-height: 1.6; resize: none; outline: none; font-family: inherit;
+    }
+    .scroll-btn { align-self: flex-end; }
+    .footer { text-align: center; font-size: 9px; color: #52525b; margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="logo">INT<span class="teal">CU</span></div>
+    <div class="tagline">The Intelligent Cue</div>
+  </div>
+
+  <div class="user-info" id="userInfo">Loading...</div>
+
+  <div class="actions">
+    <button class="btn btn-teal" id="openApp">Open Intcu</button>
+    <button class="btn btn-dark" id="openPanel">Open Side Panel</button>
+  </div>
+
+  <div class="script-area">
+    <div class="script-label">Quick Script</div>
+    <textarea class="script-text" id="scriptText" placeholder="Paste or type your script here..."></textarea>
+    <button class="btn btn-dark scroll-btn" id="scrollBtn" style="padding:8px 16px;width:auto;font-size:11px;">▶ Scroll</button>
+  </div>
+
+  <div class="footer">intcu.com — Speak smarter. Respond instantly.</div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

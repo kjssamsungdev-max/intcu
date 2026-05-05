@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html><head><title>Generate Intcu Icons</title></head>
+<body>
+<p>Right-click each canvas and "Save Image As" to the icons/ folder:</p>
+<script>
+[16, 48, 128].forEach(size => {
+  const c = document.createElement("canvas");
+  c.width = size; c.height = size;
+  const ctx = c.getContext("2d");
+  ctx.fillStyle = "#09090b";
+  ctx.beginPath();
+  ctx.roundRect(0, 0, size, size, size * 0.15);
+  ctx.fill();
+  ctx.fillStyle = "#00D4C8";
+  ctx.font = `bold ${Math.round(size * 0.45)}px sans-serif`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText("ic", size / 2, size / 2 + 1);
+  document.body.appendChild(document.createElement("br"));
+  const label = document.createElement("span");
+  label.textContent = `icon${size}.png: `;
+  document.body.appendChild(label);
+  document.body.appendChild(c);
+});
+</script>
+</body></html>
