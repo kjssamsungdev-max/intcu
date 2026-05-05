@@ -1437,6 +1437,9 @@ function IntcuApp() {
         @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.7;transform:scale(0.95)} }
         @keyframes fadeUp { from{opacity:0;transform:translate(-50%,10px)} to{opacity:1;transform:translate(-50%,0)} }
         ::-webkit-scrollbar{display:none} *{scrollbar-width:none}
+        [title]{position:relative}
+        [title]:hover::after{content:attr(title);position:absolute;bottom:110%;left:50%;transform:translateX(-50%);background:#1a1a1a;color:#f4f4f5;padding:4px 10px;border-radius:6px;font-size:11px;white-space:nowrap;z-index:9999;pointer-events:none;opacity:0;animation:ttFade 0.15s ease 0.3s forwards;font-family:'Sora',sans-serif;font-weight:500;box-shadow:0 4px 12px rgba(0,0,0,0.4)}
+        @keyframes ttFade{to{opacity:1}}
       `}</style>
     </div>
   );
