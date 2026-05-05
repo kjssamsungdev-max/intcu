@@ -330,6 +330,7 @@ function IntcuApp() {
 
   // ─── Usage Gates ───
   const [showUpgrade, setShowUpgrade] = useState(false);
+  const [showShortcuts, setShowShortcuts] = useState(false);
   const [gatedFeature, setGatedFeature] = useState("");
 
   const getUserPlan = () => currentUser?.plan || "free";
@@ -711,6 +712,14 @@ function IntcuApp() {
   useEffect(() => {
     const h = (e) => {
       if (e.target.tagName === "TEXTAREA" || e.target.tagName === "INPUT") return;
+      // Global shortcuts (work in any mode)
+      if (e.key === "?") { e.preventDefault(); setShowShortcuts(s => !s); return; }
+      if (e.code === "Escape") { setShowShortcuts(false); return; }
+      if (e.code === "Digit1" && !e.metaKey && !e.ctrlKey) { setMode("script"); return; }
+      if (e.code === "Digit2" && !e.metaKey && !e.ctrlKey) { setMode("writer"); return; }
+      if (e.code === "Digit3" && !e.metaKey && !e.ctrlKey) { setMode("myfile"); return; }
+      if (e.code === "Digit4" && !e.metaKey && !e.ctrlKey) { setMode("copilot"); return; }
+      // Script-only shortcuts
       if (mode !== "script") return;
       if (e.code === "Space") { e.preventDefault(); doPlay(); }
       else if (e.code === "ArrowUp") { e.preventDefault(); setSpeed(s => Math.min(10, s + 1)); }
@@ -718,6 +727,7 @@ function IntcuApp() {
       else if (e.code === "KeyR" && !e.metaKey) { e.preventDefault(); doReset(); }
       else if (e.code === "KeyE" && !e.metaKey) { e.preventDefault(); doEdit(); }
       else if (e.code === "KeyM" && !e.metaKey) { e.preventDefault(); setMirrored(m => !m); }
+      else if (e.code === "KeyF" && !e.metaKey) { e.preventDefault(); setFs(f => !f); }
     };
     window.addEventListener("keydown", h);
     return () => window.removeEventListener("keydown", h);
@@ -1232,6 +1242,7 @@ function IntcuApp() {
           {currentUser && <span style={{ fontSize: 9, color: T.textDim, maxWidth: 80, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{currentUser.name || currentUser.email}</span>}
           {currentUser?.role === "admin" && <span style={{ fontSize: 7, color: T.teal, fontWeight: 700, letterSpacing: 1, background: `rgba(0,212,200,0.1)`, padding: "1px 4px", borderRadius: 3 }}>ADMIN</span>}
           <Btn onClick={logout} style={{ fontSize: 9, padding: "3px 8px" }} title="Sign out">↪</Btn>
+          <Btn onClick={() => setShowShortcuts(true)} style={{ fontSize: 11, padding: "3px 8px", fontWeight: 700 }} title="Keyboard shortcuts (?)">?</Btn>
           <button onClick={() => setDarkMode(!darkMode)} title="Switch light / dark mode" style={{ width: 36, height: 36, borderRadius: 8, background: darkMode ? T.bgCard : T.border, border: "1px solid " + T.borderLit, cursor: "pointer", fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center" }}>{darkMode ? "☀️" : "🌙"}</button>
           <Btn onClick={() => setShowSync(true)} bg={roomOn ? T.purple : T.bgCard} style={{ fontSize: 10, padding: "4px 10px" }} title="Multi-screen sync & team rooms">{roomOn ? `📡 ${members.length}` : "📡"}</Btn>
         </div>
@@ -1705,6 +1716,37 @@ function IntcuApp() {
             <Btn onClick={sendInj} bg={T.purple} style={{ fontSize: 10 }}>Send</Btn>
           </div>}
         </div>}
+      </div>}
+
+      {/* ─── Shortcuts Modal ─── */}
+      {showShortcuts && <div style={{ position: "fixed", inset: 0, zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.85)", backdropFilter: "blur(8px)" }} onClick={() => setShowShortcuts(false)}>
+        <div onClick={e => e.stopPropagation()} style={{ background: T.bgCard, border: `1px solid ${T.borderLit}`, borderRadius: 12, padding: "24px 28px", width: "92%", maxWidth: 520, maxHeight: "80vh", overflowY: "auto" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
+            <span style={{ fontSize: 16, fontWeight: 700, fontFamily: T.font }}>⌨ Keyboard Shortcuts</span>
+            <Btn onClick={() => setShowShortcuts(false)} style={{ background: "transparent", border: "none", fontSize: 16 }}>✕</Btn>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
+            <div>
+              <div style={{ fontSize: 9, color: T.teal, fontWeight: 700, letterSpacing: 2, marginBottom: 8 }}>PLAYBACK</div>
+              {[["Space", "Play / Pause"], ["↑", "Speed up"], ["↓", "Speed down"], ["R", "Reset to start"], ["E", "Edit script"], ["M", "Mirror toggle"], ["F", "Fullscreen"]].map(([k, d]) => (
+                <div key={k} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
+                  <kbd style={{ fontFamily: "monospace", fontSize: 11, fontWeight: 700, color: T.teal, background: T.bg, border: `1px solid ${T.border}`, borderRadius: 4, padding: "2px 8px", minWidth: 32, textAlign: "center" }}>{k}</kbd>
+                  <span style={{ fontSize: 12, color: T.textDim }}>{d}</span>
+                </div>
+              ))}
+            </div>
+            <div>
+              <div style={{ fontSize: 9, color: T.teal, fontWeight: 700, letterSpacing: 2, marginBottom: 8 }}>NAVIGATION</div>
+              {[["?", "Shortcuts panel"], ["1", "Script mode"], ["2", "Writer mode"], ["3", "MyFile mode"], ["4", "Copilot mode"], ["Esc", "Close panels"]].map(([k, d]) => (
+                <div key={k} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
+                  <kbd style={{ fontFamily: "monospace", fontSize: 11, fontWeight: 700, color: T.teal, background: T.bg, border: `1px solid ${T.border}`, borderRadius: 4, padding: "2px 8px", minWidth: 32, textAlign: "center" }}>{k}</kbd>
+                  <span style={{ fontSize: 12, color: T.textDim }}>{d}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div style={{ marginTop: 16, textAlign: "center", fontSize: 10, color: T.textMuted }}>Press <kbd style={{ fontFamily: "monospace", color: T.teal, border: `1px solid ${T.border}`, borderRadius: 3, padding: "1px 5px", fontSize: 10 }}>?</kbd> to toggle this panel</div>
+        </div>
       </div>}
 
       {/* ─── Upgrade Modal ─── */}
