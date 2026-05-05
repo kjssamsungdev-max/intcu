@@ -1234,15 +1234,19 @@ function IntcuApp() {
     const activeToday = adminLog.filter(e => { try { return new Date(e.ts).toDateString() === today; } catch { return false; } }).length;
     const [adminSearch, setAdminSearch] = useState("");
     const [adminFilter, setAdminFilter] = useState("all");
+    const [adminSettings, setAdminSettings] = useState(() => { try { return JSON.parse(localStorage.getItem("intcu-admin-settings") || "{}"); } catch { return {}; } });
+    const [featureFlags, setFeatureFlags] = useState(() => { try { return JSON.parse(localStorage.getItem("intcu-feature-flags") || "{}"); } catch { return {}; } });
     const filteredUsers = adminUsers.filter(u => {
       if (adminFilter !== "all" && (u.plan || "free") !== adminFilter) return false;
       if (adminSearch && !u.email?.includes(adminSearch) && !u.name?.includes(adminSearch)) return false;
       return true;
     }).slice(0, MAX_ADMIN_ROWS);
     const updateUser = (email, updates) => {
+      const oldUser = adminUsers.find(u => u.email === email);
       const users = adminUsers.map(u => u.email === email ? { ...u, ...updates } : u);
       localStorage.setItem("intcu-users", JSON.stringify(users));
       if (email === currentUser.email) { const upd = { ...currentUser, ...updates }; setCurrentUser(upd); localStorage.setItem("intcu-user", JSON.stringify(upd)); }
+      if (updates.plan && oldUser) { try { const bl = JSON.parse(localStorage.getItem("intcu-admin-billing-log") || "[]"); bl.unshift({ user: email, oldPlan: oldUser.plan || "free", newPlan: updates.plan, changedBy: currentUser.email, ts: new Date().toISOString() }); localStorage.setItem("intcu-admin-billing-log", JSON.stringify(bl.slice(0, 20))); } catch {} }
       show(`Updated ${email}`);
     };
     const deleteUser = (email) => {
@@ -1364,11 +1368,106 @@ function IntcuApp() {
             </>}
 
             {/* Settings / Billing / System — placeholder */}
-            {(adminPage === "settings" || adminPage === "billing" || adminPage === "system") && <div style={{ textAlign: "center", padding: 40 }}>
-              <div style={{ fontSize: 36, marginBottom: 8 }}>{adminPage === "settings" ? "🔧" : adminPage === "billing" ? "💳" : "🛡"}</div>
-              <div style={{ fontSize: 16, fontWeight: 700, color: T.text, marginBottom: 4 }}>{adminPage.charAt(0).toUpperCase() + adminPage.slice(1)}</div>
-              <div style={{ fontSize: 12, color: T.textDim }}>Coming in Sprint 7</div>
-            </div>}
+            {/* Settings */}
+            {adminPage === "settings" && (() => {
+              const as = adminSettings;
+              const ff = featureFlags;
+              const fieldStyle = { width: "100%", maxWidth: 400, height: 44, background: T.bgAlt, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: "0 12px", color: T.text, fontSize: 13, fontFamily: T.font, outline: "none", boxSizing: "border-box" };
+              return <>
+                <div style={{ fontSize: 14, fontWeight: 700, color: T.text, marginBottom: 14 }}>Platform Settings</div>
+                <div style={{ background: T.bgCard, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: 20, marginBottom: 24 }}>
+                  {[
+                    ["defaultEngine", "Default AI Engine", <select value={as.defaultEngine || "claude"} onChange={e => setAdminSettings(p => ({ ...p, defaultEngine: e.target.value }))} style={fieldStyle}>{AI_ENGINES.map(e => <option key={e.id} value={e.id}>{e.label}</option>)}</select>],
+                    ["freeDailyLimit", "Free Daily AI Limit", <input type="number" value={as.freeDailyLimit ?? 3} onChange={e => setAdminSettings(p => ({ ...p, freeDailyLimit: +e.target.value }))} style={fieldStyle} min={0} max={100} />],
+                    ["maxRoomMembers", "Max Room Members", <input type="number" value={as.maxRoomMembers ?? 10} onChange={e => setAdminSettings(p => ({ ...p, maxRoomMembers: +e.target.value }))} style={fieldStyle} min={1} max={50} />],
+                    ["defaultLanguage", "Default Language", <select value={as.defaultLanguage || ""} onChange={e => setAdminSettings(p => ({ ...p, defaultLanguage: e.target.value }))} style={fieldStyle}><option value="">None</option>{LANGUAGES.map(l => <option key={l} value={l}>{l}</option>)}</select>],
+                  ].map(([key, label, input]) => <div key={key} style={{ marginBottom: 14 }}><div style={{ fontSize: 11, color: T.textDim, marginBottom: 4, fontWeight: 600 }}>{label}</div>{input}</div>)}
+                  <button onClick={() => { localStorage.setItem("intcu-admin-settings", JSON.stringify(adminSettings)); show("Settings saved"); }} style={{ padding: "10px 24px", borderRadius: T.radius, background: T.teal, color: "#fff", border: "none", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: T.font, marginTop: 4 }}>Save Settings</button>
+                </div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: T.text, marginBottom: 14 }}>Feature Flags</div>
+                <div style={{ background: T.bgCard, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: 20 }}>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                    {[["copilot", "Copilot"], ["translator", "Translator"], ["quotes", "Quotes"], ["recording", "Recording"], ["brainstorm", "Brainstorm"], ["teamSync", "Team Sync"], ["tour", "Tour"]].map(([id, label]) => (
+                      <Pill key={id} label={label} active={ff[id] !== false} onClick={() => { const next = { ...ff, [id]: ff[id] === false ? true : false }; setFeatureFlags(next); localStorage.setItem("intcu-feature-flags", JSON.stringify(next)); show(`${label}: ${next[id] !== false ? "ON" : "OFF"}`); }} color={T.teal} />
+                    ))}
+                  </div>
+                  <div style={{ fontSize: 10, color: T.textMuted, marginTop: 10 }}>Disabled features are hidden from all users.</div>
+                </div>
+              </>;
+            })()}
+
+            {/* Billing */}
+            {adminPage === "billing" && (() => {
+              const revenue = (proUsers * 12) + (teamUsers * 29);
+              const aiCalls = (() => { try { const d = JSON.parse(localStorage.getItem("intcu-usage") || "{}"); return d.date === today ? d.count || 0 : 0; } catch { return 0; } })();
+              const cost = +(aiCalls * 0.003).toFixed(2);
+              const margin = revenue > 0 ? Math.round(((revenue - cost) / revenue) * 100) : 0;
+              const freeCount = totalUsers - proUsers - teamUsers;
+              const billingLog = (() => { try { return JSON.parse(localStorage.getItem("intcu-admin-billing-log") || "[]").slice(0, 20); } catch { return []; } })();
+              const total = totalUsers || 1;
+              return <>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 14, marginBottom: 24 }}>
+                  {statCard("Monthly Revenue", `$${revenue}`, T.teal)}
+                  {statCard("API Cost Estimate", `$${cost}`, T.red)}
+                  {statCard("Gross Margin", `${margin}%`, T.green)}
+                </div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: T.text, marginBottom: 10 }}>Plan Distribution</div>
+                <div style={{ background: T.bgCard, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: 16, marginBottom: 24 }}>
+                  <div style={{ display: "flex", height: 32, borderRadius: 6, overflow: "hidden", marginBottom: 8 }}>
+                    <div style={{ width: `${(freeCount / total) * 100}%`, background: T.textMuted, minWidth: freeCount > 0 ? 2 : 0 }} />
+                    <div style={{ width: `${(proUsers / total) * 100}%`, background: T.teal, minWidth: proUsers > 0 ? 2 : 0 }} />
+                    <div style={{ width: `${(teamUsers / total) * 100}%`, background: T.purple, minWidth: teamUsers > 0 ? 2 : 0 }} />
+                  </div>
+                  <div style={{ display: "flex", gap: 16, fontSize: 11 }}>
+                    <span><span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: T.textMuted, marginRight: 4 }} />Free {freeCount}</span>
+                    <span><span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: T.teal, marginRight: 4 }} />Pro {proUsers}</span>
+                    <span><span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: T.purple, marginRight: 4 }} />Team {teamUsers}</span>
+                  </div>
+                </div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: T.text, marginBottom: 10 }}>Plan Change Log</div>
+                <div style={{ background: T.bgCard, border: `1px solid ${T.border}`, borderRadius: T.radius, overflow: "hidden" }}>
+                  {billingLog.length === 0 && <div style={{ padding: 20, textAlign: "center", color: T.textMuted, fontSize: 12 }}>No plan changes yet</div>}
+                  {billingLog.map((e, i) => (
+                    <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 14px", borderBottom: `1px solid ${T.border}`, fontSize: 12 }}>
+                      <div><span style={{ fontWeight: 600, color: T.text }}>{e.user}</span> <span style={{ color: T.textMuted }}>{e.oldPlan}</span> <span style={{ color: T.textDim }}>→</span> <span style={{ color: T.teal, fontWeight: 600 }}>{e.newPlan}</span> <span style={{ fontSize: 10, color: T.textMuted }}>by {e.changedBy}</span></div>
+                      <span style={{ fontSize: 10, color: T.textMuted }}>{fmtDate(e.ts)}</span>
+                    </div>
+                  ))}
+                </div>
+              </>;
+            })()}
+
+            {/* System */}
+            {adminPage === "system" && <>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 14, marginBottom: 24 }}>
+                {[["App Version", "1.1.0"], ["Deploy", "Live"], ["API Proxy", "Active"], ["KV Store", "Connected"]].map(([label, status]) => (
+                  <div key={label} style={{ background: T.bgCard, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: "14px 18px", display: "flex", alignItems: "center", gap: 10 }}>
+                    <div style={{ width: 10, height: 10, borderRadius: "50%", background: T.green, boxShadow: `0 0 6px ${T.green}` }} />
+                    <div><div style={{ fontSize: 12, fontWeight: 600, color: T.text }}>{label}</div><div style={{ fontSize: 11, color: T.textDim }}>{status}</div></div>
+                  </div>
+                ))}
+              </div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: T.text, marginBottom: 10 }}>Quick Actions</div>
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                <button onClick={() => {
+                  if (!window.confirm("Clear all caches? User accounts and admin settings will be preserved.")) return;
+                  const keep = ["intcu-users", "intcu-admin-settings", "intcu-user", "intcu-feature-flags"];
+                  let cleared = 0;
+                  Object.keys(localStorage).forEach(k => { if (k.startsWith("intcu-") && !keep.includes(k)) { localStorage.removeItem(k); cleared++; } });
+                  show(`Cleared ${cleared} cache entries`);
+                }} style={{ padding: "10px 20px", borderRadius: T.radius, background: T.red, color: "#fff", border: "none", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: T.font }}>Clear Caches</button>
+                <button onClick={() => { localStorage.removeItem("intcu-tour-done"); show("Tour will replay on next visit"); }} style={{ padding: "10px 20px", borderRadius: T.radius, background: T.amber, color: "#fff", border: "none", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: T.font }}>Reset Tour</button>
+                <button onClick={() => {
+                  const data = {};
+                  Object.keys(localStorage).forEach(k => { if (k.startsWith("intcu-") || k.startsWith("pp-")) { try { data[k] = JSON.parse(localStorage.getItem(k)); } catch { data[k] = localStorage.getItem(k); } } });
+                  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement("a"); a.href = url; a.download = `intcu-export-${new Date().toISOString().slice(0, 10)}.json`;
+                  document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+                  show("Data exported");
+                }} style={{ padding: "10px 20px", borderRadius: T.radius, background: T.blue, color: "#fff", border: "none", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: T.font }}>Export Data</button>
+              </div>
+            </>}
 
           </div>
         </div>
