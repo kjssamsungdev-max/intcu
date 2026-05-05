@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Intcu SDK Demo</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #fafaf9; color: #1a1a1a; min-height: 100vh; padding: 40px 20px; }
+    .container { max-width: 720px; margin: 0 auto; }
+    h1 { font-size: 28px; font-weight: 700; margin-bottom: 4px; letter-spacing: 1px; }
+    h1 span { color: #00D4C8; }
+    .subtitle { font-size: 13px; color: #6b6b6b; margin-bottom: 32px; }
+    .section { margin-bottom: 28px; }
+    .section h2 { font-size: 14px; font-weight: 700; color: #333; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px; }
+    .btn-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
+    .btn {
+      padding: 12px 24px; border-radius: 8px; border: 1px solid #e2e0dc;
+      background: #fff; color: #1a1a1a; font-size: 13px; font-weight: 600;
+      cursor: pointer; transition: all 0.15s;
+    }
+    .btn:hover { background: #f0efed; border-color: #d4d0ca; }
+    .btn-teal { background: #00D4C8; color: #fff; border-color: #00D4C8; }
+    .btn-teal:hover { background: #00B8A9; }
+    .btn-red { background: #dc2626; color: #fff; border-color: #dc2626; }
+    .btn-red:hover { background: #b91c1c; }
+    #teleprompter-container {
+      width: 100%; height: 500px; border: 2px dashed #e2e0dc; border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      color: #9ca3af; font-size: 13px; background: #fff;
+    }
+    #teleprompter-container iframe { border-radius: 10px; }
+    .code-block {
+      background: #1a1a1a; color: #f4f4f5; padding: 16px 20px; border-radius: 8px;
+      font-size: 12px; font-family: 'SF Mono', 'Fira Code', monospace; line-height: 1.7;
+      overflow-x: auto; margin-top: 8px;
+    }
+    .log { margin-top: 12px; padding: 12px; background: #f0efed; border-radius: 8px; font-size: 11px; color: #6b6b6b; max-height: 120px; overflow-y: auto; font-family: monospace; }
+    .log div { padding: 2px 0; border-bottom: 1px solid #e2e0dc; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>INT<span>CU</span> SDK Demo</h1>
+    <p class="subtitle">Embed the AI teleprompter and conversation copilot on any website.</p>
+
+    <div class="section">
+      <h2>Floating Mode</h2>
+      <div class="btn-row">
+        <button class="btn btn-teal" id="initCopilot">Launch Copilot (Bottom-Right)</button>
+        <button class="btn" id="initScript">Launch Script (Bottom-Left)</button>
+        <button class="btn btn-red" id="destroyBtn">Destroy</button>
+      </div>
+      <div class="code-block">&lt;script src="https://intcu.com/sdk/intcu-sdk.js"&gt;&lt;/script&gt;
+&lt;script&gt;
+  Intcu.init({ mode: "copilot", position: "bottom-right", theme: "dark" });
+&lt;/script&gt;</div>
+    </div>
+
+    <div class="section">
+      <h2>Inline Mode</h2>
+      <div class="btn-row">
+        <button class="btn btn-teal" id="initInline">Embed Inline Below</button>
+        <button class="btn" id="clearInline">Clear</button>
+      </div>
+      <div id="teleprompter-container">Inline embed will appear here</div>
+    </div>
+
+    <div class="section">
+      <h2>SDK Methods</h2>
+      <div class="btn-row">
+        <button class="btn" id="openBtn">open()</button>
+        <button class="btn" id="closeBtn">close()</button>
+        <button class="btn" id="toggleBtn">toggle()</button>
+        <button class="btn" id="setScript">setScript("Hello world...")</button>
+        <button class="btn" id="setNiche">setNiche("sales")</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Event Log</h2>
+      <div class="log" id="eventLog"><div>Waiting for events...</div></div>
+    </div>
+  </div>
+
+  <script src="intcu-sdk.js"></script>
+  <script>
+    var log = document.getElementById("eventLog");
+    function addLog(msg) {
+      var d = document.createElement("div");
+      d.textContent = new Date().toLocaleTimeString() + " — " + msg;
+      log.prepend(d);
+    }
+
+    document.getElementById("initCopilot").addEventListener("click", function () {
+      if (window.Intcu) Intcu.destroy();
+      Intcu.init({
+        mode: "copilot",
+        position: "bottom-right",
+        theme: "dark",
+        collapsed: false,
+        onReady: function () { addLog("onReady fired"); },
+        onSuggestion: function (t) { addLog("onSuggestion: " + t.slice(0, 60)); },
+        onTranscript: function (t) { addLog("onTranscript: " + t.slice(0, 60)); },
+      });
+      addLog("Initialized: copilot, bottom-right");
+    });
+
+    document.getElementById("initScript").addEventListener("click", function () {
+      if (window.Intcu) Intcu.destroy();
+      Intcu.init({
+        mode: "script",
+        position: "bottom-left",
+        theme: "light",
+        collapsed: false,
+        onReady: function () { addLog("onReady fired"); },
+      });
+      addLog("Initialized: script, bottom-left");
+    });
+
+    document.getElementById("initInline").addEventListener("click", function () {
+      if (window.Intcu) Intcu.destroy();
+      document.getElementById("teleprompter-container").textContent = "";
+      Intcu.init({
+        mode: "copilot",
+        position: "inline",
+        container: "#teleprompter-container",
+        width: "100%",
+        height: "100%",
+        theme: "dark",
+        onReady: function () { addLog("onReady (inline)"); },
+      });
+      addLog("Initialized: inline mode");
+    });
+
+    document.getElementById("clearInline").addEventListener("click", function () {
+      if (window.Intcu) Intcu.destroy();
+      document.getElementById("teleprompter-container").textContent = "Inline embed will appear here";
+      addLog("Destroyed inline");
+    });
+
+    document.getElementById("destroyBtn").addEventListener("click", function () {
+      if (window.Intcu) Intcu.destroy();
+      addLog("Destroyed");
+    });
+
+    document.getElementById("openBtn").addEventListener("click", function () { Intcu.open(); addLog("open()"); });
+    document.getElementById("closeBtn").addEventListener("click", function () { Intcu.close(); addLog("close()"); });
+    document.getElementById("toggleBtn").addEventListener("click", function () { Intcu.toggle(); addLog("toggle()"); });
+    document.getElementById("setScript").addEventListener("click", function () {
+      Intcu.setScript("Hello world. This is a demo script sent via the SDK.\n\n[PAUSE]\n\nIntcu makes every speaker smarter.");
+      addLog("setScript() called");
+    });
+    document.getElementById("setNiche").addEventListener("click", function () {
+      Intcu.setNiche("sales");
+      addLog("setNiche('sales')");
+    });
+  </script>
+</body>
+</html>
