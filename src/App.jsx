@@ -148,6 +148,38 @@ const CUE_MAP = {
   "[BREATHE]": { label: "○ BREATHE", color: T.green },
 };
 
+// ─── Social Media ───
+const SOCIALS = [
+  { id: "x", label: "X", url: "https://x.com/intaboracay", icon: "𝕏" },
+  { id: "linkedin", label: "LinkedIn", url: "https://linkedin.com/company/intcu", icon: "in" },
+  { id: "instagram", label: "Instagram", url: "https://instagram.com/intcu.ai", icon: "📸" },
+  { id: "facebook", label: "Facebook", url: "https://facebook.com/intcu", icon: "f" },
+  { id: "tiktok", label: "TikTok", url: "https://tiktok.com/@intcu", icon: "♪" },
+  { id: "youtube", label: "YouTube", url: "https://youtube.com/@intcu", icon: "▶" },
+];
+
+function shareContent(platform, text, url = "https://intcu.com") {
+  const encoded = encodeURIComponent(text);
+  const encodedUrl = encodeURIComponent(url);
+  const popup = (href) => window.open(href, "_blank", "width=600,height=400,scrollbars=yes");
+  if (platform === "x") popup(`https://x.com/intent/tweet?text=${encoded}&url=${encodedUrl}`);
+  else if (platform === "linkedin") popup(`https://www.linkedin.com/sharing/share-offsite/?url=${encodedUrl}`);
+  else if (platform === "facebook") popup(`https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`);
+  else { navigator.clipboard?.writeText(text + " " + url); return "copied"; }
+  return "shared";
+}
+
+const SocialRow = ({ style: s }) => (
+  <div style={{ display: "flex", justifyContent: "center", gap: 8, ...s }}>
+    {SOCIALS.map(s => (
+      <a key={s.id} href={s.url} target="_blank" rel="noopener noreferrer" title={s.label}
+        style={{ width: 40, height: 40, borderRadius: 8, background: T.chromeLight, color: T.chromeText, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 700, fontFamily: T.font, textDecoration: "none", transition: "background 0.15s" }}
+        onMouseEnter={e => e.currentTarget.style.background = T.teal}
+        onMouseLeave={e => e.currentTarget.style.background = T.chromeLight}>{s.icon}</a>
+    ))}
+  </div>
+);
+
 // ─── P10-R4/R5: Utility functions (each ≤ 10 lines, guarded) ───
 const wc = (t) => { if (!t) return 0; return t.trim().split(/\s+/).filter(Boolean).length; };
 const estTime = (t) => { const m = Math.ceil(wc(t) / AVG_WPM); return m < 1 ? "<1m" : `${m}m`; };
@@ -343,6 +375,8 @@ function IntcuApp() {
   const [tourStep, setTourStep] = useState(0);
   const [showTour, setShowTour] = useState(false);
   const [showAdmin, setShowAdmin] = useState(false);
+  const [showShare, setShowShare] = useState(false);
+  const [shareText, setShareText] = useState("");
   const [adminPage, setAdminPage] = useState("overview");
   const [gatedFeature, setGatedFeature] = useState("");
 
@@ -404,6 +438,22 @@ function IntcuApp() {
     if (!win) { show("Allow popups to export PDF"); }
     setTimeout(() => URL.revokeObjectURL(url), 10000);
   };
+
+  const ShareMenu = ({ text, onClose }) => (
+    <div style={{ position: "absolute", top: "100%", right: 0, marginTop: 4, background: T.bgCard, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: 6, zIndex: 50, minWidth: 180, boxShadow: "0 8px 24px rgba(0,0,0,0.15)" }}>
+      {[
+        ["Share on X", () => { shareContent("x", text); onClose(); }],
+        ["Share on LinkedIn", () => { shareContent("linkedin", text); onClose(); }],
+        ["Share on Facebook", () => { shareContent("facebook", text); onClose(); }],
+        ["Copy link", () => { navigator.clipboard?.writeText("https://intcu.com"); show("Link copied"); onClose(); }],
+        ["Export as .txt", () => { const b = new Blob([text], { type: "text/plain" }); const u = URL.createObjectURL(b); const a = document.createElement("a"); a.href = u; a.download = "intcu-script.txt"; a.click(); URL.revokeObjectURL(u); onClose(); }],
+      ].map(([label, fn]) => (
+        <div key={label} onClick={fn} style={{ padding: "7px 12px", fontSize: 12, color: T.text, cursor: "pointer", borderRadius: 4, fontFamily: T.font, fontWeight: 500 }}
+          onMouseEnter={e => e.currentTarget.style.background = T.bgAlt}
+          onMouseLeave={e => e.currentTarget.style.background = "transparent"}>{label}</div>
+      ))}
+    </div>
+  );
 
   // ─── Mode ───
   const [mode, setMode] = useState("script");
@@ -1295,6 +1345,7 @@ function IntcuApp() {
         <footer style={{ textAlign: "center", padding: "32px 20px", borderTop: `1px solid ${T.border}`, fontSize: 11, color: T.textMuted }}>
           <p>intcu.com — The Intelligent Cue</p>
           <p style={{ marginTop: 4 }}>Artisans F&B Corp · Puerto Princesa, Philippines</p>
+          <SocialRow style={{ marginTop: 16 }} />
         </footer>
       </div>
     );
@@ -1320,6 +1371,7 @@ function IntcuApp() {
           {loginError && <div style={{ marginTop: 10, fontSize: 12, color: T.red, textAlign: "center" }}>{loginError}</div>}
         </div>
         <div style={{ textAlign: "center", marginTop: 20, fontSize: 10, color: T.textMuted }}>intcu.com — Speak smarter. Respond instantly.</div>
+        <div style={{ textAlign: "center", marginTop: 12 }}><div style={{ fontSize: 9, color: T.chromeTextDim, marginBottom: 6 }}>Follow us</div><SocialRow /></div>
       </div>
     </div>
   );
@@ -1742,6 +1794,10 @@ function IntcuApp() {
           <Btn onClick={() => setShowLib(true)} title="Script library">📁</Btn>
           <Btn onClick={() => setShowQuotes(true)} label="Quote finder" title="Quote finder" style={{ minHeight: 40, fontSize: 16 }}>💬</Btn>
           <Btn onClick={() => setFs(!fs)} title="Fullscreen (double-tap)">{fs ? "⊡" : "⊞"}</Btn>
+          <div style={{ position: "relative" }}>
+            <Btn onClick={() => setShowShare(s => !s)} title="Share script">↗</Btn>
+            {showShare && <ShareMenu text={"Check out my script on @intcu — The Intelligent Cue " + (script.slice(0, 100).replace(/\n/g, " ") + "...")} onClose={() => setShowShare(false)} />}
+          </div>
           {playing && !counting && <>
             <span style={{ fontVariantNumeric: "tabular-nums", fontSize: 12, fontWeight: 600, color: T.textDim, marginLeft: 4 }}>{fmtTime(elapsed)}</span>
             {pace && <span style={{ fontSize: 8, fontWeight: 700, color: pace.c, letterSpacing: 1 }}>{pace.l}</span>}
@@ -1901,6 +1957,10 @@ function IntcuApp() {
               <Btn onClick={runCoach} disabled={wCoachLoading} bg={T.cyan} style={{ fontSize: 10 }}>{wCoachLoading ? "Analyzing..." : "🎯 Coach"}</Btn>
               <Btn onClick={() => setShowQuotes(true)} style={{ fontSize: 10 }}>💬</Btn>
               <Btn onClick={() => { setScript(wResult); setMode("script"); setEditing(true); show("Sent to script"); }} bg={T.green}>→ Script</Btn>
+              <div style={{ position: "relative", display: "inline-block" }}>
+                <Btn onClick={() => setShowShare(s => !s)} style={{ fontSize: 10 }}>↗ Share</Btn>
+                {showShare && <ShareMenu text={wResult.slice(0, 200) + "... — written with Intcu AI"} onClose={() => setShowShare(false)} />}
+              </div>
             </div>
           </div>
           <div style={{ background: T.bg, border: `1px solid ${T.border}`, borderRadius: 6, padding: 14, maxHeight: 220, overflowY: "auto", fontSize: 13, lineHeight: 1.8, color: "#ccc", fontFamily: PROMPTER_FONTS[fontIdx].css, whiteSpace: "pre-wrap" }}>{wResult}</div>
@@ -1999,6 +2059,10 @@ function IntcuApp() {
             <Btn onClick={() => setCpViewSession(null)}>← Back</Btn>
             <Btn onClick={() => exportDoc(cpViewSession)} bg={T.blue}>📄 Doc</Btn>
             <Btn onClick={() => { const t = (cpViewSession.exchanges || []).map((e, i) => `Exchange ${i+1}:\nHeard: ${e.heard}\nResponse: ${e.response}`).join("\n\n"); exportPDF(t || cpViewSession.fullTranscript || "Empty session", "Copilot Session"); }} bg={T.bgCard}>📄 PDF</Btn>
+            <div style={{ position: "relative", display: "inline-block" }}>
+              <Btn onClick={() => setShowShare(s => !s)}>↗ Share</Btn>
+              {showShare && <ShareMenu text={`Just had a ${cpViewSession.niche || "coaching"} session coached by Intcu AI — The Intelligent Cue`} onClose={() => setShowShare(false)} />}
+            </div>
           </div>
           <div style={{ fontFamily: T.font, fontSize: 16, fontWeight: 700, marginBottom: 6 }}>Session Review</div>
           <div style={{ fontSize: 10, color: T.textDim, marginBottom: 12 }}>{fmtDate(cpViewSession.date)} · {cpViewSession.niche} · {cpViewSession.style}</div>
