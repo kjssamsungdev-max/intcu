@@ -270,7 +270,7 @@ async function callAI(system, userMsg, maxTokens = 1000, engine = "claude") {
 
 // ─── Shared UI atoms (P10-R4: each ≤ 15 lines) ───
 const Btn = ({ children, onClick, bg, disabled, style: s, label, title }) => (
-  <button disabled={disabled} onClick={onClick} title={title} aria-label={label || (typeof children === "string" ? children : undefined)} style={{ padding: "7px 14px", borderRadius: T.radius, background: bg || T.chromeLight, color: T.chromeText, border: `1px solid ${T.chromeBorder}`, cursor: disabled ? "default" : "pointer", fontSize: 12, fontFamily: T.font, fontWeight: 600, whiteSpace: "nowrap", opacity: disabled ? 0.4 : 1, transition: "all 0.15s", ...s }}>{children}</button>
+  <button disabled={disabled} onClick={onClick} title={title} aria-label={label || (typeof children === "string" ? children : undefined)} style={{ padding: "7px 14px", borderRadius: T.radius, background: bg || T.chromeLight, color: T.chromeText, border: `1px solid ${T.chromeBorder}`, cursor: disabled ? "default" : "pointer", fontSize: 12, fontFamily: T.font, fontWeight: 600, whiteSpace: "nowrap", opacity: disabled ? 0.4 : 1, transition: "all 0.15s", minHeight: 36, ...s }}>{children}</button>
 );
 
 const Knob = ({ label, value, onChange, min, max, step = 1, unit = "" }) => (
@@ -285,7 +285,7 @@ const Knob = ({ label, value, onChange, min, max, step = 1, unit = "" }) => (
 );
 
 const Pill = ({ label, active, onClick, color = T.red, title }) => (
-  <button onClick={onClick} title={title} style={{ padding: "4px 12px", borderRadius: 20, background: active ? color : "transparent", border: `1px solid ${active ? color : T.chromeBorder}`, color: active ? "#fff" : T.chromeTextDim, fontSize: 10, fontWeight: 600, cursor: "pointer", fontFamily: T.font, letterSpacing: 0.5, transition: "all 0.15s" }}>{label}</button>
+  <button onClick={onClick} title={title} style={{ padding: "6px 12px", borderRadius: 20, background: active ? color : "transparent", border: `1px solid ${active ? color : T.chromeBorder}`, color: active ? "#fff" : T.chromeTextDim, fontSize: 10, fontWeight: 600, cursor: "pointer", fontFamily: T.font, letterSpacing: 0.5, transition: "all 0.15s", minHeight: 32 }}>{label}</button>
 );
 
 const Toast = ({ msg, onDone }) => {
@@ -303,6 +303,7 @@ function IntcuApp() {
   const [currentUser, setCurrentUser] = useState(null);
   const [showLogin, setShowLogin] = useState(true);
   const [showLanding, setShowLanding] = useState(true);
+  const [isMobile, setIsMobile] = useState(typeof window !== "undefined" && window.innerWidth < 768);
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
   const [loginError, setLoginError] = useState("");
@@ -313,6 +314,9 @@ function IntcuApp() {
   const getAuthKey = () => { let k = localStorage.getItem("intcu-auth-key"); if (!k) { k = "intcu-v1-" + Date.now(); localStorage.setItem("intcu-auth-key", k); } return k; };
   const signUser = (u) => ({ ...u, sig: btoa(u.email + (u.role || "user") + (u.plan || "free") + getAuthKey()) });
   const verifyUser = (u) => { if (!u?.sig || !u?.email) return false; return u.sig === btoa(u.email + (u.role || "user") + (u.plan || "free") + getAuthKey()); };
+
+  // ─── Responsive ───
+  useEffect(() => { const h = () => setIsMobile(window.innerWidth < 768); window.addEventListener("resize", h); return () => window.removeEventListener("resize", h); }, []);
 
   // ─── Auth persistence ───
   useEffect(() => {
@@ -1267,8 +1271,8 @@ function IntcuApp() {
 
   // ─── Landing Page (SEO-crawlable) ───
   if ((!loggedIn || showLogin) && showLanding) {
-    const secStyle = { padding: "60px 20px", maxWidth: 960, margin: "0 auto" };
-    const cardGrid = { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 16 };
+    const secStyle = { padding: isMobile ? "32px 16px" : "60px 20px", maxWidth: 960, margin: "0 auto" };
+    const cardGrid = { display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fit, minmax(260px, 1fr))", gap: 16 };
     return (
       <div style={{ position: "fixed", inset: 0, background: T.bg, color: T.text, fontFamily: T.font, overflowY: "auto", overflowX: "hidden", zIndex: 1 }}>
         {/* Nav */}
@@ -1281,14 +1285,14 @@ function IntcuApp() {
         </nav>
 
         {/* Hero */}
-        <section style={{ textAlign: "center", padding: "80px 20px 60px" }}>
-          <svg viewBox="0 0 200 60" style={{ width: 160, height: 48, marginBottom: 12 }} role="img" aria-label="Intcu"><text x="10" y="43" fontFamily="'Sora', sans-serif" fontSize="38" fontWeight="700" letterSpacing="2" fill={T.text}>int</text><text x="102" y="43" fontFamily="'Sora', sans-serif" fontSize="38" fontWeight="700" letterSpacing="2" fill={T.teal}>cu</text><circle cx="155" cy="28" r="4" fill={T.teal} opacity="0.9"/><circle cx="155" cy="28" r="7" fill={T.teal} opacity="0.15"/></svg>
-          <div style={{ fontSize: 13, color: T.teal, letterSpacing: 2, fontWeight: 600, marginBottom: 20 }}>The Intelligent Cue</div>
-          <h1 style={{ fontSize: 32, fontWeight: 700, lineHeight: 1.3, maxWidth: 600, margin: "0 auto 12px", fontFamily: T.font }}>AI-powered teleprompter with live conversation copilot</h1>
-          <p style={{ fontSize: 16, color: T.textDim, maxWidth: 480, margin: "0 auto 28px", lineHeight: 1.6 }}>Speak smarter. Respond instantly. 10 coaching scenarios, 8 AI engines, team sync — free to start.</p>
-          <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
-            <button onClick={() => { setShowLanding(false); setIsRegistering(true); }} style={{ padding: "14px 32px", borderRadius: T.radius, background: T.teal, color: "#fff", border: "none", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: T.font }}>Get Started Free</button>
-            <a href="#features" style={{ padding: "14px 32px", borderRadius: T.radius, background: "transparent", color: T.text, border: `1px solid ${T.border}`, fontSize: 15, fontWeight: 600, cursor: "pointer", fontFamily: T.font, textDecoration: "none" }}>See Features ↓</a>
+        <section style={{ textAlign: "center", padding: isMobile ? "48px 16px 32px" : "80px 20px 60px" }}>
+          <svg viewBox="0 0 200 60" style={{ width: isMobile ? 120 : 160, height: isMobile ? 36 : 48, marginBottom: 12 }} role="img" aria-label="Intcu"><text x="10" y="43" fontFamily="'Sora', sans-serif" fontSize="38" fontWeight="700" letterSpacing="2" fill={T.text}>int</text><text x="102" y="43" fontFamily="'Sora', sans-serif" fontSize="38" fontWeight="700" letterSpacing="2" fill={T.teal}>cu</text><circle cx="155" cy="28" r="4" fill={T.teal} opacity="0.9"/><circle cx="155" cy="28" r="7" fill={T.teal} opacity="0.15"/></svg>
+          <div style={{ fontSize: isMobile ? 11 : 13, color: T.teal, letterSpacing: 2, fontWeight: 600, marginBottom: isMobile ? 14 : 20 }}>The Intelligent Cue</div>
+          <h1 style={{ fontSize: isMobile ? 24 : 32, fontWeight: 700, lineHeight: 1.3, maxWidth: isMobile ? "90%" : 600, margin: "0 auto 12px", fontFamily: T.font }}>AI-powered teleprompter with live conversation copilot</h1>
+          <p style={{ fontSize: isMobile ? 14 : 16, color: T.textDim, maxWidth: isMobile ? "90%" : 480, margin: "0 auto 28px", lineHeight: 1.6 }}>Speak smarter. Respond instantly. 10 coaching scenarios, 8 AI engines, team sync — free to start.</p>
+          <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap", padding: isMobile ? "0 8px" : 0 }}>
+            <button onClick={() => { setShowLanding(false); setIsRegistering(true); }} style={{ padding: "14px 32px", borderRadius: T.radius, background: T.teal, color: "#fff", border: "none", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: T.font, width: isMobile ? "100%" : "auto", minHeight: 48 }}>Get Started Free</button>
+            <a href="#features" style={{ padding: "14px 32px", borderRadius: T.radius, background: "transparent", color: T.text, border: `1px solid ${T.border}`, fontSize: 15, fontWeight: 600, cursor: "pointer", fontFamily: T.font, textDecoration: "none", width: isMobile ? "100%" : "auto", minHeight: 48, display: "flex", alignItems: "center", justifyContent: "center" }}>See Features ↓</a>
           </div>
         </section>
 
@@ -1326,7 +1330,7 @@ function IntcuApp() {
         {/* Pricing */}
         <section style={secStyle}>
           <h2 style={{ fontSize: 22, fontWeight: 700, textAlign: "center", marginBottom: 28 }}>Simple pricing</h2>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16 }}>
+          <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fit, minmax(220px, 1fr))", gap: 16 }}>
             {[
               ["Free", "$0", "forever", ["Full teleprompter", "3 AI calls/day", "Free engines", "10 saved scripts"], false],
               ["Pro", "$12", "/month", ["Unlimited AI calls", "All 8 engines", "Copilot + Coach", "Recording + Export", "Translate + Quotes"], true],
@@ -1356,7 +1360,7 @@ function IntcuApp() {
   // ─── Login Page ───
   if (!loggedIn || showLogin) return (
     <div style={{ position: "fixed", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", background: T.chrome, fontFamily: T.font, overflowY: "auto", zIndex: 1 }}>
-      <div style={{ width: "88%", maxWidth: 400 }}>
+      <div style={{ width: isMobile ? "90%" : "88%", maxWidth: 400, padding: isMobile ? "0 4px" : 0 }}>
         <div style={{ textAlign: "center", marginBottom: 28 }}>
           <div style={{ fontSize: 28, fontWeight: 700, letterSpacing: 3, marginBottom: 4 }}>INT<span style={{ color: T.teal }}>CU</span></div>
           <div style={{ fontSize: 12, color: T.textDim, letterSpacing: 1 }}>The Intelligent Cue</div>
