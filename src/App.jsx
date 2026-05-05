@@ -1270,7 +1270,7 @@ function IntcuApp() {
     const secStyle = { padding: "60px 20px", maxWidth: 960, margin: "0 auto" };
     const cardGrid = { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 16 };
     return (
-      <div style={{ width: "100%", minHeight: "100vh", background: T.bg, color: T.text, fontFamily: T.font, overflowY: "auto" }}>
+      <div style={{ position: "fixed", inset: 0, background: T.bg, color: T.text, fontFamily: T.font, overflowY: "auto", overflowX: "hidden", zIndex: 1 }}>
         {/* Nav */}
         <nav style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 24px", background: T.chrome, position: "sticky", top: 0, zIndex: 10 }}>
           <svg viewBox="0 0 200 60" style={{ width: 72, height: 22 }} role="img" aria-label="Intcu logo"><text x="10" y="43" fontFamily="'Sora', sans-serif" fontSize="38" fontWeight="700" letterSpacing="2" fill={T.chromeText}>int</text><text x="102" y="43" fontFamily="'Sora', sans-serif" fontSize="38" fontWeight="700" letterSpacing="2" fill={T.teal}>cu</text><circle cx="155" cy="28" r="4" fill={T.teal} opacity="0.9"/></svg>
@@ -1355,7 +1355,7 @@ function IntcuApp() {
 
   // ─── Login Page ───
   if (!loggedIn || showLogin) return (
-    <div style={{ width: "100%", height: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: T.chrome, fontFamily: T.font }}>
+    <div style={{ position: "fixed", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", background: T.chrome, fontFamily: T.font, overflowY: "auto", zIndex: 1 }}>
       <div style={{ width: "88%", maxWidth: 400 }}>
         <div style={{ textAlign: "center", marginBottom: 28 }}>
           <div style={{ fontSize: 28, fontWeight: 700, letterSpacing: 3, marginBottom: 4 }}>INT<span style={{ color: T.teal }}>CU</span></div>
