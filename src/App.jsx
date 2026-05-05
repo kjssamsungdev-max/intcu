@@ -329,7 +329,7 @@ function IntcuApp() {
     }
   }, []);
 
-  const getUsers = () => { try { return JSON.parse(localStorage.getItem("intcu-users")) || []; } catch { return []; } };
+  const getUsers = () => { try { const d = JSON.parse(localStorage.getItem("intcu-users")); return Array.isArray(d) ? d : []; } catch { return []; } };
 
   const handleLogin = () => {
     setLoginError("");
@@ -349,7 +349,7 @@ function IntcuApp() {
     if (!registerName.trim() || !loginEmail.trim() || !loginPassword) { setLoginError("All fields required"); return; }
     if (loginPassword.length < 4) { setLoginError("Password must be at least 4 characters"); return; }
     const users = getUsers();
-    if (users.find(u => u.email === loginEmail.trim())) { setLoginError("Email already registered"); return; }
+    if (users.find(u => u.email.toLowerCase() === loginEmail.trim().toLowerCase())) { setLoginError("Email already registered"); return; }
     const newUser = { email: loginEmail.trim(), password: btoa(loginPassword), name: registerName.trim(), role: "user", created: new Date().toISOString() };
     users.push(newUser);
     localStorage.setItem("intcu-users", JSON.stringify(users));
@@ -921,7 +921,7 @@ function IntcuApp() {
   };
 
   const insertQuote = (q) => {
-    const insert = `\n[PAUSE]\n"${q.quote}"\n— ${q.author}, ${q.source} (${q.year})\n[PAUSE]\n`;
+    const insert = `\n[PAUSE]\n"${sanitize(q.quote)}"\n— ${sanitize(q.author)}, ${sanitize(q.source)} (${sanitize(q.year)})\n[PAUSE]\n`;
     setScript(prev => prev + insert);
     setMode("script"); setEditing(true);
     show("Quote inserted into script");
@@ -944,7 +944,7 @@ function IntcuApp() {
         if (!window.mammoth) {
           const s = document.createElement("script");
           s.src = "https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.8.0/mammoth.browser.min.js";
-          await new Promise((resolve, reject) => { s.onload = resolve; s.onerror = reject; document.head.appendChild(s); });
+          await new Promise((resolve, reject) => { s.onload = resolve; s.onerror = () => reject(new Error("CDN unavailable")); document.head.appendChild(s); });
         }
         const arrayBuf = await file.arrayBuffer();
         const result = await window.mammoth.extractRawText({ arrayBuffer: arrayBuf });
@@ -1071,6 +1071,7 @@ function IntcuApp() {
       }
       if (nf.trim()) {
         cpBufRef.current += nf;
+        if (cpBufRef.current.length > 5000) cpBufRef.current = cpBufRef.current.slice(-2000);
         setCpTranscript(p => bounded([...p.filter(t => t.type !== "interim"), { type: "final", text: nf.trim() }], MAX_TRANSCRIPT));
         if (cpTimerRef.current) clearTimeout(cpTimerRef.current);
         cpTimerRef.current = setTimeout(() => { if (cpBufRef.current.trim()) genCpResponse(cpBufRef.current); }, DEBOUNCE_MS);
@@ -1107,7 +1108,7 @@ function IntcuApp() {
   };
 
   const genCpResponse = async (transcript) => {
-    if (!transcript?.trim()) return; // P10-R5
+    if (!transcript?.trim() || cpLoading) return; // P10-R5
     setCpLoading(true);
     const niche = COPILOT_NICHES.find(n => n.id === cpNicheRef.current) || COPILOT_NICHES[0];
     const style = COPILOT_STYLES.find(s => s.id === cpStyleRef.current) || COPILOT_STYLES[0];
@@ -1225,6 +1226,7 @@ function IntcuApp() {
         } else {
           const st = await sGet(`room:${code}:state`, true);
           if (st) {
+            if (st.ts && Date.now() - st.ts > 10000) show("Host may be disconnected");
             if (st.script !== script) setScript(st.script);
             if (st.speed !== speed) setSpeed(st.speed);
             if (scrollRef.current) {
@@ -1720,7 +1722,7 @@ function IntcuApp() {
           if (age > 30) return null;
           return <div key={inj.time} style={{ background: `rgba(168,85,247,0.12)`, border: `1px solid rgba(168,85,247,0.25)`, borderRadius: 6, padding: "5px 12px", marginBottom: 3, backdropFilter: "blur(8px)", opacity: Math.max(0.3, 1 - age / 30) }}>
             <span style={{ fontSize: 9, color: T.purple, fontWeight: 700 }}>{inj.from}: </span>
-            <span style={{ fontSize: 12, color: "#fff" }}>{inj.text}</span>
+            <span style={{ fontSize: 12, color: "#fff" }}>{sanitize(inj.text)}</span>
           </div>;
         })}
       </div>}
@@ -1773,7 +1775,7 @@ function IntcuApp() {
               {quoteResults.length === 0 && !quoteLoading && <div style={{ textAlign: "center", padding: 20, color: T.textMuted, fontSize: 12 }}>Enter a topic to find verified quotes</div>}
               {quoteResults.map((q, i) => (
                 <div key={i} style={{ background: T.bg, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: 12, marginBottom: 8 }}>
-                  <div style={{ fontSize: 13, lineHeight: 1.6, color: T.text, fontStyle: "italic", marginBottom: 6 }}>"{q.quote}"</div>
+                  <div style={{ fontSize: 13, lineHeight: 1.6, color: T.text, fontStyle: "italic", marginBottom: 6 }}>"{sanitize(q.quote)}"</div>
                   <div style={{ fontSize: 11, color: T.textDim, marginBottom: 2 }}>— {q.author}</div>
                   <div style={{ fontSize: 9, color: T.textMuted, marginBottom: 8 }}>{q.source} ({q.year}){q.context ? ` · ${q.context}` : ""}</div>
                   <div style={{ display: "flex", gap: 6 }}>
@@ -1841,7 +1843,7 @@ function IntcuApp() {
                 {LANGUAGES.map(l => <option key={l} value={l}>{l}</option>)}
               </select>
             </div>
-            {targetLang && <Btn onClick={async () => { if (!script.trim()) return; show("Translating..."); const t = await translateScript(script); setScript(t); show(`Translated to ${targetLang}`); }} bg={T.blue} style={{ fontSize: 10 }}>Translate Script</Btn>}
+            {targetLang && <Btn onClick={async () => { if (!script.trim()) { show("Nothing to translate"); return; } show("Translating..."); const t = await translateScript(script); setScript(t); show(`Translated to ${targetLang}`); }} bg={T.blue} style={{ fontSize: 10 }}>Translate Script</Btn>}
             <Pill label="Captions" active={captions} onClick={() => setCaptions(!captions)} color={T.teal} title="Live speech captions overlay" />
           </div>
         </div>}
@@ -1911,6 +1913,8 @@ function IntcuApp() {
               onScroll={() => { if (scrollRef.current) { const mx = scrollRef.current.scrollHeight - scrollRef.current.clientHeight; if (mx > 0) setProgress((scrollRef.current.scrollTop / mx) * 100); } }}>
             {lines.map((line, i) => {
               const dist = Math.abs(i - activeLine);
+              // Viewport windowing: skip rendering lines far from view during playback
+              if (playing && !counting && focus && dist > 50) return <div key={i} ref={el => lineRefs.current[i] = el} style={{ minHeight: fontSize * (line.trim() === "" ? EMPTY_LINE_SCALE : 1), lineHeight: spacing }} />;
               let op = 1;
               if (focus) { if (i === activeLine) op = 1; else if (dist === 1) op = 0.4; else if (dist === 2) op = 0.2; else op = 0.08; }
               const isActive = i === activeLine && focus && playing && !counting;
