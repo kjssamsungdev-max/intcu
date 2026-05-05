@@ -277,9 +277,9 @@ const Knob = ({ label, value, onChange, min, max, step = 1, unit = "" }) => (
   <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
     <span style={{ fontSize: 8, textTransform: "uppercase", letterSpacing: 2, color: "#a1a1aa", fontFamily: T.font }}>{label}</span>
     <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-      <Btn onClick={(e) => { e.stopPropagation(); e.preventDefault(); console.log("KNOB MINUS clicked, new value:", Math.max(min, +(value - step).toFixed(1))); onChange(Math.max(min, +(value - step).toFixed(1))); }} style={{ width: 24, height: 24, padding: 0, fontSize: 14, color: "#e4e4e7" }}>−</Btn>
+      <Btn onClick={(e) => { e.stopPropagation(); e.nativeEvent.stopImmediatePropagation(); onChange(Math.max(min, +(value - step).toFixed(1))); }} style={{ width: 24, height: 24, padding: 0, fontSize: 14, color: "#e4e4e7" }}>−</Btn>
       <span style={{ fontVariantNumeric: "tabular-nums", fontSize: 13, fontWeight: 600, color: "#e4e4e7", minWidth: 28, textAlign: "center", fontFamily: T.font }}>{value}{unit}</span>
-      <Btn onClick={(e) => { e.stopPropagation(); onChange(Math.min(max, +(value + step).toFixed(1))); }} style={{ width: 24, height: 24, padding: 0, fontSize: 14, color: "#e4e4e7" }}>+</Btn>
+      <Btn onClick={(e) => { e.stopPropagation(); e.nativeEvent.stopImmediatePropagation(); onChange(Math.min(max, +(value + step).toFixed(1))); }} style={{ width: 24, height: 24, padding: 0, fontSize: 14, color: "#e4e4e7" }}>+</Btn>
     </div>
   </div>
 );
@@ -468,8 +468,8 @@ function IntcuApp() {
   // ─── Script state ───
   const [script, setScript] = useState(`Welcome to Intcu — The Intelligent Cue.\n\nSpeak smarter. Respond instantly.\n\n[PAUSE]\n\nSwitch to Writer to generate scripts with AI. Switch to Copilot for live conversation intelligence.\n\n[BREATHE]\n\nUse cue markers: [PAUSE], [SLOW], [BREATHE] on their own line.\nWrap words in [EMPHASIS]like this[/EMPHASIS] for highlights.\n\nKeyboard: Space play/pause · ↑↓ speed · R reset · E edit · M mirror\n\n[PAUSE]\n\nNever miss a perfect line again.`);
   const [playing, setPlaying] = useState(false);
-  const [speed, setSpeed] = useState(3);
-  const speedRef = useRef(3);
+  const [speed, setSpeed] = useState(1);
+  const speedRef = useRef(1);
   const [fontSize, setFontSize] = useState(44);
   const [mirrored, setMirrored] = useState(false);
   const [editing, setEditing] = useState(true);
@@ -1799,7 +1799,7 @@ function IntcuApp() {
 
         {/* Controls */}
         {!fs && <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "5px 10px", gap: 5, borderBottom: `1px solid ${T.chromeBorder}`, background: T.chromeMid, flexShrink: 0, flexWrap: "wrap" }}>
-          <Btn onClick={() => { console.log("PLAY CLICKED, currently playing:", playing); doPlay(); }} bg={playing ? T.red : T.green} style={{ minWidth: 64 }} title="Play / Pause (Space)">{playing ? "⏸ Pause" : "▶ Play"}</Btn>
+          <Btn onClick={doPlay} bg={playing ? T.red : T.green} style={{ minWidth: 64 }} title="Play / Pause (Space)">{playing ? "⏸ Pause" : "▶ Play"}</Btn>
           <Btn onClick={doReset} title="Reset to start (R)">⟲</Btn>
           <Btn onClick={doEdit} title="Edit script (E)">✎</Btn>
           <Btn onClick={() => setShowLib(true)} title="Script library">📁</Btn>
