@@ -48,6 +48,8 @@ const MAX_HISTORY = 12;
 const MAX_POLL_RETRIES = 3;
 const SYNC_INTERVAL_MS = 700;
 const AVG_WPM = 150;
+const MAX_ADMIN_ROWS = 50;
+const MAX_LOG_ENTRIES = 100;
 
 // ─── Theme: Hybrid UX zones (dark chrome, light content) ───
 const T = {
@@ -298,6 +300,7 @@ function IntcuApp() {
     if (found) {
       setCurrentUser(found); setLoggedIn(true); setShowLogin(false);
       localStorage.setItem("intcu-user", JSON.stringify(found));
+      try { const log = JSON.parse(localStorage.getItem("intcu-admin-log") || "[]"); log.unshift({ user: found.email, plan: found.plan || "free", action: "login", ts: new Date().toISOString() }); localStorage.setItem("intcu-admin-log", JSON.stringify(log.slice(0, MAX_LOG_ENTRIES))); } catch {}
     } else { setLoginError("Invalid email or password"); }
   };
 
@@ -325,6 +328,8 @@ function IntcuApp() {
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [tourStep, setTourStep] = useState(0);
   const [showTour, setShowTour] = useState(false);
+  const [showAdmin, setShowAdmin] = useState(false);
+  const [adminPage, setAdminPage] = useState("overview");
   const [gatedFeature, setGatedFeature] = useState("");
 
   const getUserPlan = () => currentUser?.plan || "free";
@@ -1218,6 +1223,164 @@ function IntcuApp() {
     </div>
   );
 
+  // ─── Admin Dashboard ───
+  if (showAdmin && currentUser?.role === "admin") {
+    const adminUsers = (() => { try { return JSON.parse(localStorage.getItem("intcu-users") || "[]"); } catch { return []; } })();
+    const adminLog = (() => { try { return JSON.parse(localStorage.getItem("intcu-admin-log") || "[]").slice(0, MAX_LOG_ENTRIES); } catch { return []; } })();
+    const today = new Date().toDateString();
+    const totalUsers = adminUsers.length;
+    const proUsers = adminUsers.filter(u => u.plan === "pro").length;
+    const teamUsers = adminUsers.filter(u => u.plan === "team").length;
+    const activeToday = adminLog.filter(e => { try { return new Date(e.ts).toDateString() === today; } catch { return false; } }).length;
+    const [adminSearch, setAdminSearch] = useState("");
+    const [adminFilter, setAdminFilter] = useState("all");
+    const filteredUsers = adminUsers.filter(u => {
+      if (adminFilter !== "all" && (u.plan || "free") !== adminFilter) return false;
+      if (adminSearch && !u.email?.includes(adminSearch) && !u.name?.includes(adminSearch)) return false;
+      return true;
+    }).slice(0, MAX_ADMIN_ROWS);
+    const updateUser = (email, updates) => {
+      const users = adminUsers.map(u => u.email === email ? { ...u, ...updates } : u);
+      localStorage.setItem("intcu-users", JSON.stringify(users));
+      if (email === currentUser.email) { const upd = { ...currentUser, ...updates }; setCurrentUser(upd); localStorage.setItem("intcu-user", JSON.stringify(upd)); }
+      show(`Updated ${email}`);
+    };
+    const deleteUser = (email) => {
+      if (email === currentUser.email) { show("Can't delete yourself"); return; }
+      if (!window.confirm(`Delete ${email}?`)) return;
+      const users = adminUsers.filter(u => u.email !== email);
+      localStorage.setItem("intcu-users", JSON.stringify(users));
+      show(`Deleted ${email}`);
+    };
+    const engineUsage = (() => { try { const d = JSON.parse(localStorage.getItem("intcu-engine-usage") || "{}"); return Object.entries(d).sort((a, b) => b[1] - a[1]).slice(0, 8); } catch { return []; } })();
+    const maxEngine = engineUsage.length > 0 ? engineUsage[0][1] : 1;
+
+    const NAV = [["overview", "📊", "Overview"], ["users", "👥", "Users"], ["analytics", "📈", "Analytics"], ["settings", "🔧", "Settings"], ["billing", "💳", "Billing"], ["system", "🛡", "System"]];
+    const navItem = (id, icon, label) => (
+      <div key={id} onClick={() => setAdminPage(id)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 16px", cursor: "pointer", borderLeft: adminPage === id ? `3px solid ${T.teal}` : "3px solid transparent", background: adminPage === id ? "rgba(0,184,169,0.06)" : "transparent", color: adminPage === id ? T.chromeText : T.chromeTextDim, fontSize: 13, fontWeight: adminPage === id ? 600 : 400, transition: "all 0.15s" }}><span>{icon}</span><span className="admin-nav-label">{label}</span></div>
+    );
+    const statCard = (label, value, accent = T.teal) => (
+      <div style={{ background: T.bgCard, border: `1px solid ${T.border}`, borderLeft: `3px solid ${accent}`, borderRadius: T.radius, padding: "16px 20px" }}>
+        <div style={{ fontSize: 36, fontWeight: 700, color: accent, fontFamily: T.font }}>{value}</div>
+        <div style={{ fontSize: 12, color: T.textDim, marginTop: 2 }}>{label}</div>
+      </div>
+    );
+
+    return (
+      <div style={{ width: "100%", height: "100vh", display: "flex", fontFamily: T.font, overflow: "hidden" }}>
+        {/* Sidebar */}
+        <div className="admin-sidebar" style={{ width: 220, flexShrink: 0, background: T.chrome, borderRight: `1px solid ${T.chromeBorder}`, display: "flex", flexDirection: "column" }}>
+          <div style={{ padding: "16px 20px", borderBottom: `1px solid ${T.chromeBorder}` }}>
+            <svg viewBox="0 0 200 60" style={{ width: 72, height: 22 }}><text x="10" y="43" fontFamily="'Sora', sans-serif" fontSize="38" fontWeight="700" letterSpacing="2" fill={T.chromeText}>int</text><text x="102" y="43" fontFamily="'Sora', sans-serif" fontSize="38" fontWeight="700" letterSpacing="2" fill={T.teal}>cu</text><circle cx="155" cy="28" r="4" fill={T.teal} opacity="0.9"/></svg>
+            <div style={{ fontSize: 9, color: T.chromeTextDim, letterSpacing: 2, marginTop: 2 }}>ADMIN</div>
+          </div>
+          <div style={{ flex: 1, paddingTop: 8 }}>{NAV.map(([id, icon, label]) => navItem(id, icon, label))}</div>
+          <div style={{ padding: 12, borderTop: `1px solid ${T.chromeBorder}` }}>
+            <button onClick={() => setShowAdmin(false)} style={{ width: "100%", padding: "8px 0", background: T.chromeLight, border: `1px solid ${T.chromeBorder}`, borderRadius: T.radius, color: T.chromeTextDim, fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: T.font }}>← Back to App</button>
+          </div>
+        </div>
+        {/* Main */}
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+          <div style={{ padding: "10px 24px", background: T.chrome, borderBottom: `1px solid ${T.chromeBorder}`, display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
+            <span style={{ fontSize: 15, fontWeight: 700, color: T.chromeText }}>Admin Dashboard</span>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: 11, color: T.chromeTextDim }}>{currentUser.name || currentUser.email}</span>
+              <Btn onClick={logout} style={{ fontSize: 9, padding: "3px 8px" }}>Logout</Btn>
+            </div>
+          </div>
+          <div style={{ flex: 1, overflowY: "auto", padding: 24, background: T.bg }}>
+
+            {/* Overview */}
+            {adminPage === "overview" && <>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 14, marginBottom: 24 }}>
+                {statCard("Total Users", totalUsers)}
+                {statCard("Pro Users", proUsers, T.blue)}
+                {statCard("Team Users", teamUsers, T.purple)}
+                {statCard("Active Today", activeToday, T.green)}
+              </div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: T.text, marginBottom: 10 }}>Recent Activity</div>
+              <div style={{ background: T.bgCard, border: `1px solid ${T.border}`, borderRadius: T.radius, overflow: "hidden" }}>
+                {adminLog.length === 0 && <div style={{ padding: 20, textAlign: "center", color: T.textMuted, fontSize: 12 }}>No activity yet</div>}
+                {adminLog.slice(0, 10).map((e, i) => (
+                  <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 14px", borderBottom: `1px solid ${T.border}`, fontSize: 12 }}>
+                    <div><span style={{ fontWeight: 600, color: T.text }}>{e.user}</span> <span style={{ color: T.textDim }}>{e.action}</span> <span style={{ fontSize: 10, color: T.teal, fontWeight: 600 }}>{e.plan || ""}</span></div>
+                    <span style={{ fontSize: 10, color: T.textMuted }}>{fmtDate(e.ts)}</span>
+                  </div>
+                ))}
+              </div>
+            </>}
+
+            {/* Users */}
+            {adminPage === "users" && <>
+              <div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
+                <input value={adminSearch} onChange={e => setAdminSearch(e.target.value)} placeholder="Search users..." style={{ flex: 1, minWidth: 180, padding: "8px 12px", background: T.bgAlt, border: `1px solid ${T.border}`, borderRadius: T.radius, color: T.text, fontSize: 13, fontFamily: T.font, outline: "none" }} />
+                <select value={adminFilter} onChange={e => setAdminFilter(e.target.value)} style={{ padding: "8px 12px", background: T.bgAlt, border: `1px solid ${T.border}`, borderRadius: T.radius, color: T.text, fontSize: 12, fontFamily: T.font }}>
+                  <option value="all">All Plans</option><option value="free">Free</option><option value="pro">Pro</option><option value="team">Team</option>
+                </select>
+              </div>
+              <div style={{ fontSize: 10, color: T.textMuted, marginBottom: 8 }}>Showing {filteredUsers.length} of {adminUsers.length}</div>
+              <div style={{ background: T.bgCard, border: `1px solid ${T.border}`, borderRadius: T.radius, overflow: "hidden" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1.5fr 2fr 0.7fr 0.7fr 1.2fr 1.5fr", padding: "8px 14px", background: T.bgAlt, borderBottom: `1px solid ${T.border}` }}>
+                  {["Name", "Email", "Plan", "Role", "Created", "Actions"].map(h => <span key={h} style={{ fontSize: 10, fontWeight: 700, color: T.textDim, textTransform: "uppercase", letterSpacing: 1 }}>{h}</span>)}
+                </div>
+                {filteredUsers.map(u => {
+                  const planColor = u.plan === "pro" ? T.teal : u.plan === "team" ? T.purple : T.textMuted;
+                  return <div key={u.email} style={{ display: "grid", gridTemplateColumns: "1.5fr 2fr 0.7fr 0.7fr 1.2fr 1.5fr", padding: "10px 14px", borderBottom: `1px solid ${T.border}`, alignItems: "center", minHeight: 48 }}>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: T.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.name || "—"}</span>
+                    <span style={{ fontSize: 11, color: T.textDim, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.email}</span>
+                    <span style={{ fontSize: 9, fontWeight: 700, color: "#fff", background: planColor, padding: "2px 8px", borderRadius: 10, textAlign: "center" }}>{u.plan || "free"}</span>
+                    <span>{u.role === "admin" ? <span style={{ fontSize: 9, fontWeight: 700, color: "#fff", background: T.amber, padding: "2px 6px", borderRadius: 10 }}>admin</span> : <span style={{ fontSize: 10, color: T.textMuted }}>user</span>}</span>
+                    <span style={{ fontSize: 10, color: T.textMuted }}>{fmtDate(u.created)}</span>
+                    <div style={{ display: "flex", gap: 4 }}>
+                      <Btn onClick={() => { const next = { free: "pro", pro: "team", team: "free" }; updateUser(u.email, { plan: next[u.plan || "free"] || "pro" }); }} style={{ fontSize: 9, padding: "2px 8px", background: T.bgAlt, color: T.text, border: `1px solid ${T.border}` }}>Plan</Btn>
+                      <Btn onClick={() => updateUser(u.email, { role: u.role === "admin" ? "user" : "admin" })} style={{ fontSize: 9, padding: "2px 8px", background: T.bgAlt, color: T.text, border: `1px solid ${T.border}` }}>Role</Btn>
+                      <Btn onClick={() => deleteUser(u.email)} style={{ fontSize: 9, padding: "2px 8px", background: "transparent", color: T.red, border: "none" }}>✕</Btn>
+                    </div>
+                  </div>;
+                })}
+              </div>
+            </>}
+
+            {/* Analytics */}
+            {adminPage === "analytics" && <>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 14, marginBottom: 24 }}>
+                {statCard("AI Calls Today", (() => { try { const d = JSON.parse(localStorage.getItem("intcu-usage") || "{}"); return d.date === today ? d.count || 0 : 0; } catch { return 0; } })())}
+                {statCard("Copilot Sessions", (() => { try { return JSON.parse(localStorage.getItem("pp-sessions") || "[]").length; } catch { return 0; } })(), T.purple)}
+                {statCard("Most Used Engine", engineUsage.length > 0 ? engineUsage[0][0] : "—", T.amber)}
+              </div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: T.text, marginBottom: 10 }}>Engine Usage</div>
+              <div style={{ background: T.bgCard, border: `1px solid ${T.border}`, borderRadius: T.radius, padding: 16 }}>
+                {engineUsage.length === 0 && <div style={{ textAlign: "center", color: T.textMuted, fontSize: 12, padding: 20 }}>No engine usage data yet</div>}
+                {engineUsage.map(([engine, count]) => (
+                  <div key={engine} style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: T.text, minWidth: 80, textAlign: "right" }}>{engine}</span>
+                    <div style={{ flex: 1, height: 20, background: T.bgAlt, borderRadius: 4, overflow: "hidden" }}>
+                      <div style={{ width: `${Math.max(2, (count / maxEngine) * 100)}%`, height: "100%", background: T.teal, borderRadius: 4, transition: "width 0.3s" }} />
+                    </div>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: T.textDim, minWidth: 30 }}>{count}</span>
+                  </div>
+                ))}
+              </div>
+            </>}
+
+            {/* Settings / Billing / System — placeholder */}
+            {(adminPage === "settings" || adminPage === "billing" || adminPage === "system") && <div style={{ textAlign: "center", padding: 40 }}>
+              <div style={{ fontSize: 36, marginBottom: 8 }}>{adminPage === "settings" ? "🔧" : adminPage === "billing" ? "💳" : "🛡"}</div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: T.text, marginBottom: 4 }}>{adminPage.charAt(0).toUpperCase() + adminPage.slice(1)}</div>
+              <div style={{ fontSize: 12, color: T.textDim }}>Coming in Sprint 7</div>
+            </div>}
+
+          </div>
+        </div>
+        <Toast msg={toast} onDone={() => setToast("")} />
+        <style>{`
+          @media(max-width:768px){.admin-sidebar{width:60px!important}.admin-nav-label{display:none}}
+          @keyframes fadeUp{from{opacity:0;transform:translate(-50%,10px)}to{opacity:1;transform:translate(-50%,0)}}
+        `}</style>
+      </div>
+    );
+  }
+
   return (
     <div style={{ width: "100%", height: "100vh", display: "flex", flexDirection: "column", background: T.bg, color: T.text, overflow: "hidden", position: "relative", fontFamily: T.font, ...orientStyle }}>
 
@@ -1238,7 +1401,7 @@ function IntcuApp() {
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
           {mode === "script" && <span style={{ fontSize: 9, color: T.chromeTextDim }}>{words}w · {readTime}</span>}
           {currentUser && <span style={{ fontSize: 9, color: T.chromeTextDim, maxWidth: 80, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{currentUser.name || currentUser.email}</span>}
-          {currentUser?.role === "admin" && <span style={{ fontSize: 7, color: T.teal, fontWeight: 700, letterSpacing: 1, background: `rgba(0,212,200,0.1)`, padding: "1px 4px", borderRadius: 3 }}>ADMIN</span>}
+          {currentUser?.role === "admin" && <><span style={{ fontSize: 7, color: T.teal, fontWeight: 700, letterSpacing: 1, background: `rgba(0,212,200,0.1)`, padding: "1px 4px", borderRadius: 3 }}>ADMIN</span><Btn onClick={() => { setShowAdmin(true); setAdminPage("overview"); }} style={{ fontSize: 11, padding: "3px 8px" }} title="Admin Dashboard">⚙</Btn></>}
           <Btn onClick={logout} style={{ fontSize: 9, padding: "3px 8px" }} title="Sign out">↪</Btn>
           <Btn onClick={() => setShowShortcuts(true)} style={{ fontSize: 11, padding: "3px 8px", fontWeight: 700 }} title="Keyboard shortcuts (?)">?</Btn>
           <Btn onClick={() => setShowSync(true)} bg={roomOn ? T.purple : T.bgCard} style={{ fontSize: 10, padding: "4px 10px" }} title="Multi-screen sync & team rooms">{roomOn ? `📡 ${members.length}` : "📡"}</Btn>
