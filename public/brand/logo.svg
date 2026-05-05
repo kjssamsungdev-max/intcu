@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 60">
+  <style>
+    .int { font-family: 'Sora', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 38px; font-weight: 700; letter-spacing: 2px; }
+  </style>
+  <text x="10" y="43" class="int" fill="#1a1a1a">int</text>
+  <text x="102" y="43" class="int" fill="#00D4C8">cu</text>
+  <circle cx="155" cy="28" r="4" fill="#00D4C8" opacity="0.9"/>
+  <circle cx="155" cy="28" r="7" fill="#00D4C8" opacity="0.15"/>
+</svg>

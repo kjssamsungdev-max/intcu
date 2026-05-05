@@ -1234,7 +1234,12 @@ function IntcuApp() {
       {!fs && <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 12px", background: T.bgAlt, borderBottom: `1px solid ${T.border}`, flexShrink: 0, minHeight: 42 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <div style={{ width: 8, height: 8, borderRadius: "50%", background: (playing && !counting) || cpActive ? (voiceLive || cpActive ? T.teal : T.teal) : T.textMuted, boxShadow: (playing && !counting) || cpActive ? `0 0 10px ${T.teal}` : "none", transition: "all 0.3s" }} />
-          <span style={{ fontFamily: T.font, fontSize: 14, fontWeight: 700, letterSpacing: 2.5 }}>INT<span style={{ color: T.teal }}>CU</span></span>
+          <svg viewBox="0 0 200 60" style={{ width: 80, height: 24, verticalAlign: "middle" }}>
+            <text x="10" y="43" fontFamily="'Sora', sans-serif" fontSize="38" fontWeight="700" letterSpacing="2" fill={T.text}>int</text>
+            <text x="102" y="43" fontFamily="'Sora', sans-serif" fontSize="38" fontWeight="700" letterSpacing="2" fill={T.teal}>cu</text>
+            <circle cx="155" cy="28" r="4" fill={T.teal} opacity="0.9"/>
+            <circle cx="155" cy="28" r="7" fill={T.teal} opacity="0.15"/>
+          </svg>
           {voiceLive && <span style={{ fontSize: 8, color: T.blue, fontWeight: 700, letterSpacing: 1, animation: "pulse 2s infinite" }}>VOICE</span>}
           {cpActive && <span style={{ fontSize: 8, color: T.red, fontWeight: 700, letterSpacing: 1, animation: "pulse 1.5s infinite" }}>LIVE</span>}
           {roomOn && <span style={{ fontSize: 8, color: T.purple, fontWeight: 700 }}>ROOM {roomCode}</span>}
