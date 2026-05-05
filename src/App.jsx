@@ -420,6 +420,7 @@ function IntcuApp() {
   const [fs, setFs] = useState(false); // fullscreen
   const [elapsed, setElapsed] = useState(0);
   const [activeLine, setActiveLine] = useState(0);
+  const [activeWord, setActiveWord] = useState(0);
   const [orientation, setOrientation] = useState("auto");
   const [showLib, setShowLib] = useState(false);
   const [scripts, setScripts] = useState([]);
@@ -640,6 +641,21 @@ function IntcuApp() {
 
   // Focus tracker
   useEffect(() => { if (editing || !focus || mode !== "script") return; const i = setInterval(() => setActiveLine(getActive()), 100); return () => clearInterval(i); }, [editing, focus, getActive, mode]);
+
+  // Word tracker — advance activeWord during playback
+  const prevLineRef = useRef(0);
+  useEffect(() => {
+    if (!playing || counting || editing || !focus || mode !== "script") { setActiveWord(0); return; }
+    const wps = speed * 0.5; // words per second
+    const interval = setInterval(() => {
+      if (prevLineRef.current !== activeLine) { setActiveWord(0); prevLineRef.current = activeLine; return; }
+      setActiveWord(w => w + 1);
+    }, Math.max(100, 1000 / wps));
+    return () => clearInterval(interval);
+  }, [playing, counting, editing, focus, mode, speed, activeLine]);
+
+  // Reset word on stop/reset
+  useEffect(() => { if (!playing) setActiveWord(0); }, [playing]);
 
   // ─── Voice scroll (P10-R4: ≤ 25 lines) ───
   const startVoice = useCallback(() => {
@@ -1458,7 +1474,22 @@ function IntcuApp() {
               const dist = Math.abs(i - activeLine);
               let op = 1;
               if (focus) { if (i === activeLine) op = 1; else if (dist === 1) op = 0.5; else if (dist === 2) op = 0.25; else op = 0.12; }
-              return <div key={i} ref={el => lineRefs.current[i] = el} style={{ fontSize, fontFamily: PROMPTER_FONTS[fontIdx].css, lineHeight: spacing, color: dyslexia ? "#f5f0e0" : T.text, whiteSpace: "pre-wrap", wordBreak: "break-word", textAlign: dyslexia ? "left" : "center", fontWeight: i === activeLine && focus ? 600 : 400, opacity: op, transition: "opacity 0.4s, font-weight 0.3s", minHeight: line.trim() === "" ? fontSize * EMPTY_LINE_SCALE : "auto", letterSpacing: dyslexia ? "0.05em" : "normal", wordSpacing: dyslexia ? "0.15em" : "normal" }}>{renderCue(line, cues)}</div>;
+              const isActive = i === activeLine && focus && playing && !counting;
+              const lineContent = (() => {
+                if (!isActive) return renderCue(line, cues);
+                const up = (line || "").trim().toUpperCase();
+                if (CUE_MAP[up] || line.includes("[EMPHASIS]")) return renderCue(line, cues);
+                const words = line.split(/(\s+)/);
+                let wordIdx = 0;
+                return words.map((w, wi) => {
+                  if (/^\s+$/.test(w)) return <span key={wi}>{w}</span>;
+                  const idx = wordIdx++;
+                  const color = idx === activeWord ? T.teal : (idx < activeWord ? (dyslexia ? "#f5f0e0" : T.text) : T.textDim);
+                  const fw = idx === activeWord ? 700 : 400;
+                  return <span key={wi} style={{ color, fontWeight: fw, transition: "color 0.1s" }}>{w}</span>;
+                });
+              })();
+              return <div key={i} ref={el => lineRefs.current[i] = el} style={{ fontSize, fontFamily: PROMPTER_FONTS[fontIdx].css, lineHeight: spacing, color: dyslexia ? "#f5f0e0" : T.text, whiteSpace: "pre-wrap", wordBreak: "break-word", textAlign: dyslexia ? "left" : "center", fontWeight: isActive ? 600 : (i === activeLine && focus ? 600 : 400), opacity: op, transition: "opacity 0.4s, font-weight 0.3s", minHeight: line.trim() === "" ? fontSize * EMPTY_LINE_SCALE : "auto", letterSpacing: dyslexia ? "0.05em" : "normal", wordSpacing: dyslexia ? "0.15em" : "normal" }}>{lineContent}</div>;
             })}
           </div>}
         </div>
