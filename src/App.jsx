@@ -680,6 +680,7 @@ function IntcuApp() {
 
   const animateFnRef = useRef(null);
   const animate = useCallback((ts) => {
+    console.log("TICK", { speed: speedRef?.current, playing: playingRef?.current });
     if (!lastT.current) { lastT.current = ts; animRef.current = requestAnimationFrame((t) => { if (animateFnRef.current) animateFnRef.current(t); }); return; }
     const rawDt = ts - lastT.current; lastT.current = ts;
     const dt = Math.min(Math.max(rawDt, 0), 100);
@@ -689,9 +690,10 @@ function IntcuApp() {
     let px = (speedRef.current * 60 * dt * mult) / 1000;
     if (isNaN(px) || px <= 0) px = speedRef.current * 0.5;
     el.scrollTop += px;
+    console.log("SCROLL", { scrollTop: el.scrollTop, px });
     const mx = el.scrollHeight - el.clientHeight;
     if (mx > 0) setProgress(Math.min((el.scrollTop / mx) * 100, 100));
-    if (mx > 0 && el.scrollTop >= mx) { setPlaying(false); return; }
+    if (mx > 0 && el.scrollTop >= mx) { console.log("SETPLAYING FALSE FROM:", new Error().stack.split("\n")[1].trim()); setPlaying(false); return; }
     animRef.current = requestAnimationFrame((t) => { if (animateFnRef.current) animateFnRef.current(t); });
   }, [getActive, lineMults]);
   animateFnRef.current = animate;
@@ -772,10 +774,10 @@ function IntcuApp() {
   const doPlay = useCallback(() => {
     if (editing) setEditing(false);
     if (!playRef.current) { setCountdown(COUNTDOWN_SECS); setCounting(true); setPlaying(true); }
-    else setPlaying(false);
+    else { console.log("SETPLAYING FALSE FROM:", new Error().stack.split("\n")[1].trim()); setPlaying(false); }
   }, [editing]);
-  const doReset = useCallback(() => { setPlaying(false); setProgress(0); setElapsed(0); if (scrollRef.current) scrollRef.current.scrollTop = 0; }, []);
-  const doEdit = useCallback(() => { setPlaying(false); stopVoice(); setEditing(true); setProgress(0); if (scrollRef.current) scrollRef.current.scrollTop = 0; }, [stopVoice]);
+  const doReset = useCallback(() => { console.log("SETPLAYING FALSE FROM:", new Error().stack.split("\n")[1].trim()); setPlaying(false); setProgress(0); setElapsed(0); if (scrollRef.current) scrollRef.current.scrollTop = 0; }, []);
+  const doEdit = useCallback(() => { console.log("SETPLAYING FALSE FROM:", new Error().stack.split("\n")[1].trim()); setPlaying(false); stopVoice(); setEditing(true); setProgress(0); if (scrollRef.current) scrollRef.current.scrollTop = 0; }, [stopVoice]);
 
   // Keyboard
   useEffect(() => {
@@ -1674,7 +1676,7 @@ function IntcuApp() {
       {/* ─── Mode tabs ─── */}
       {!fs && <nav role="navigation" aria-label="Mode tabs" style={{ display: "flex", borderBottom: `1px solid ${T.chromeBorder}`, background: T.chrome, flexShrink: 0 }}>
         {[["script", "📝 Script"], ["writer", "✨ Writer"], ["myfile", "📋 MyFile"], ["copilot", "🎙️ Copilot"]].map(([id, label]) => (
-          <button key={id} role="tab" aria-selected={mode === id} aria-label={`${label} mode`} onClick={() => { if (playing) { setPlaying(false); stopVoice(); } if (cpActive) stopCopilot(); setMode(id); setShowWelcome(false); }}
+          <button key={id} role="tab" aria-selected={mode === id} aria-label={`${label} mode`} onClick={() => { if (playing) { console.log("SETPLAYING FALSE FROM:", new Error().stack.split("\n")[1].trim()); setPlaying(false); stopVoice(); } if (cpActive) stopCopilot(); setMode(id); setShowWelcome(false); }}
             style={{ flex: 1, padding: "8px 0", background: "transparent", border: "none", borderBottom: mode === id ? `2px solid ${T.teal}` : "2px solid transparent", color: mode === id ? T.chromeText : T.chromeTextDim, fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: T.font, transition: "all 0.15s" }}>{label}</button>
         ))}
       </nav>}
